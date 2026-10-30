@@ -157,18 +157,12 @@
   </nav>
 
   <h2 class="part-title page-break" id="part1">Phần 1. Đồng bộ Master Data và Schedule Sync</h2>
-  <div class="part-meta"><table class="meta">
-    <tr><th>Đối tượng đọc</th><td>Developer phía ERP (D365FO) cần nắm cách DMS gọi và xử lý dữ liệu</td></tr>
-    <tr><th>Phạm vi</th><td>Luồng <strong>DMS kéo dữ liệu từ ERP</strong> (pull) qua API <code>getData</code>. Webhook Inbound (ERP gửi vào DMS) nằm ở Phần 2. Chiều Outbound (DMS gọi sang ERP) nằm ở Phần 3.</td></tr>
-    <tr><th>Nguồn đối chiếu</th><td>Code trong repository (nhánh <code>main</code>) và cấu hình đọc trực tiếp từ org Partial ngày 2026-10-22</td></tr>
-    <tr><th>Quy ước tên</th><td>ERP = D365FO. DMS = Salesforce. Tên bảng ERP viết như trong D365FO (ví dụ <code>InventTable</code>); tên object DMS viết theo API name (ví dụ <code>Product2</code>).</td></tr>
-  </table></div>
 
   <h2 id="p1-s1">1. Tóm tắt trong một phút</h2>
   <table class="grid">
     <thead><tr><th style="width:30%">Câu hỏi</th><th>Trả lời</th></tr></thead>
     <tbody>
-      <tr><td>Ai gọi ai?</td><td><strong>DMS gọi ERP</strong>, không phải ERP đẩy sang. DMS tự gọi API <code>getData</code> của ERP theo lịch.</td></tr>
+      <tr><td>Ai gọi ai?</td><td><strong>DMS gọi ERP</strong>, không phải ERP đẩy sang. DMS tự gọi API <code>getData</code> của ERP theo lịch (schedule).</td></tr>
       <tr><td>Lấy gì?</td><td>Các bản ghi <strong>mới tạo hoặc mới sửa</strong> của các bảng D365FO (ví dụ <code>InventTable</code> là sản phẩm, <code>CustTable</code> là khách hàng / đại lý). Danh sách bảng và cột nằm trong Custom Metadata <code>MasterDataD365</code> (mục 5.1).</td></tr>
       <tr><td>Khi nào?</td><td>Theo lịch riêng của từng bảng (ví dụ <code>InventTable</code> chạy phút 8, 23, 38, 53 mỗi giờ). Lịch cấu hình ngay trong <code>MasterDataD365</code>, các field <code>Schedule Unit</code> và <code>Schedule Values</code>.</td></tr>
       <tr><td>Lấy theo điều kiện gì?</td><td>Bản ghi có <code>ModifiedDateTime</code> lớn hơn mốc lần trước. Mốc được DMS tự nhớ trong Custom Setting <code>D365FO Settings</code> (mục 5.2). Nếu nhiều bản ghi, DMS lấy từng trang theo <code>RecId</code> tăng dần cho tới khi ERP trả <code>HasMore</code> = false.</td></tr>
