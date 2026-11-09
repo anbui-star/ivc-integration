@@ -3,158 +3,402 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tích hợp D365FO – DMS</title>
+<title>Tích hợp D365FO – DMS · Tài liệu kỹ thuật</title>
 <style>
   :root {
-    --ink: #000000;
-    --muted: #333333;
-    --brand: #1f4e79;
-    --brand-soft: #e8eff7;
-    --line: #c9d1db;
-    --head-bg: #1f4e79;
-    --zebra: #f6f8fb;
-    --note-bg: #eef6ff;  --note-bar: #2f80ed;
-    --warn-bg: #fff6e5;  --warn-bar: #f2994a;
-    --ok-bg:   #edf8f1;  --ok-bar:   #27ae60;
-    --bad-bg:  #fdeeee;  --bad-bar:  #eb5757;
-    --code-bg: #f3f4f6;
-    --desk: #e5e7eb;
+    color-scheme: light;
+    --ink: #1b2430;
+    --ink-2: #3c4856;
+    --muted: #5d6b7a;
+    --brand: #14385c;
+    --brand-2: #1f5a92;
+    --brand-soft: #eaf1f8;
+    --accent: #c8102e;
+    --line: #d5dce5;
+    --line-2: #e6ebf1;
+    --zebra: #f6f9fc;
+    --note-bg: #eef5fd;  --note-bar: #2f80ed;
+    --warn-bg: #fff7e8;  --warn-bar: #e08a1e;
+    --ok-bg:   #eefaf2;  --ok-bar:   #229a57;
+    --bad-bg:  #fdf0f0;  --bad-bar:  #d64545;
+    --code-bg: #f1f4f8;
+    --desk: #e9edf2;
     --paper: #ffffff;
+    --side-w: 308px;
   }
   * { box-sizing: border-box; }
-  html { background: var(--desk); }
-  body { margin: 0; padding: 32px 16px; font-family: Calibri, "Segoe UI", Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: var(--ink); }
-  .page { width: 210mm; max-width: 100%; margin: 0 auto; padding: 22mm 20mm; background: var(--paper); box-shadow: 0 2px 14px rgba(0,0,0,.18); }
+  html { background: var(--desk); scroll-behavior: smooth; scroll-padding-top: 16px; }
+  body { margin: 0; font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 10.5pt; line-height: 1.55; color: var(--ink); -webkit-font-smoothing: antialiased; }
 
-  .doc-eyebrow { margin: 0; font-size: 10pt; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-  h1.doc-title { margin: 4pt 0 6pt; font-size: 22pt; line-height: 1.2; color: var(--brand); }
-  .doc-sub { margin: 0 0 14pt; font-size: 12pt; color: var(--muted); }
+  /* ---------- Layout: sidebar + paper ---------- */
+  .layout { display: grid; grid-template-columns: var(--side-w) minmax(0, 1fr); gap: 0; min-height: 100vh; }
+  aside.sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 22px 16px 28px 20px; background: #0f2c49; color: #dbe6f2; border-right: 4px solid var(--accent); }
+  aside.sidebar .brand { margin: 0 0 14px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,.16); }
+  aside.sidebar .brand b { display: block; font-size: 13pt; line-height: 1.25; color: #fff; }
+  aside.sidebar .brand span { display: block; margin-top: 3px; font-size: 8.5pt; letter-spacing: .08em; text-transform: uppercase; color: #9db6d0; }
+  nav.toc details { margin: 0 0 2px; }
+  nav.toc summary { cursor: pointer; list-style: none; padding: 6px 8px; border-radius: 5px; font-size: 9.5pt; font-weight: 600; color: #fff; line-height: 1.3; }
+  nav.toc summary::-webkit-details-marker { display: none; }
+  nav.toc summary::before { content: "▸"; display: inline-block; width: 14px; color: #8fb0d2; transition: transform .15s; }
+  nav.toc details[open] > summary::before { transform: rotate(90deg); }
+  nav.toc summary:hover, nav.toc a:hover { background: rgba(255,255,255,.09); }
+  nav.toc summary a { color: inherit; text-decoration: none; }
+  nav.toc ol { margin: 0 0 6px; padding: 0 0 0 14px; list-style: none; }
+  nav.toc li { margin: 0; }
+  nav.toc li > a { display: block; padding: 3px 8px; border-radius: 4px; font-size: 9pt; color: #c3d3e4; text-decoration: none; line-height: 1.35; }
+  nav.toc li > a.active { background: rgba(255,255,255,.14); color: #fff; font-weight: 600; }
+  nav.toc ol ol { padding-left: 12px; }
+  nav.toc ol ol a { font-size: 8.5pt; color: #9db6d0; font-family: Consolas, monospace; }
+  nav.toc code { background: none; color: inherit; padding: 0; font-size: inherit; }
+  nav.toc .toc-flat > a { display: block; padding: 6px 8px; border-radius: 5px; font-size: 9.5pt; font-weight: 600; color: #fff; text-decoration: none; }
 
-  table.meta { width: 100%; border-collapse: collapse; margin: 0 0 6pt; font-size: 10.5pt; }
-  table.meta th, table.meta td { padding: 5pt 8pt; border: 1px solid var(--line); text-align: left; vertical-align: top; }
-  table.meta th { width: 24%; background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+  main.page { width: 100%; max-width: 1020px; margin: 0 auto; padding: 36px 48px 48px; background: var(--paper); box-shadow: 0 0 0 1px var(--line-2), 0 8px 28px rgba(15,44,73,.10); }
 
-  nav.toc { margin: 18pt 0 4pt; padding: 12pt 16pt; background: var(--brand-soft); border-left: 4px solid var(--brand); }
-  nav.toc h2 { margin: 0 0 6pt; padding: 0; border: 0; font-size: 12pt; color: var(--brand); }
-  nav.toc ol { margin: 0; padding-left: 18pt; }
-  nav.toc li { margin: 1pt 0; }
-  nav.toc > ol > li { margin: 4pt 0; font-weight: 600; }
-  nav.toc ol ol { font-weight: 400; }
-  nav.toc a { color: var(--ink); text-decoration: none; }
-  nav.toc a:hover { text-decoration: underline; }
+  /* ---------- Cover ---------- */
+  header.cover { margin: 0 0 30px; padding: 0 0 26px; border-bottom: 1px solid var(--line); }
+  .cover-band { display: flex; align-items: center; justify-content: space-between; margin: 0 0 26px; padding-bottom: 10px; border-bottom: 3px solid var(--accent); }
+  .cover-band .org { font-size: 9.5pt; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--brand); }
+  .cover-band .cls { font-size: 8.5pt; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; padding: 2px 8px; }
+  .doc-eyebrow { margin: 0; font-size: 9.5pt; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  h1.doc-title { margin: 6pt 0 8pt; font-size: 30pt; line-height: 1.12; letter-spacing: -.01em; color: var(--brand); }
+  .doc-sub { margin: 0 0 18pt; max-width: 720px; font-size: 12.5pt; line-height: 1.45; color: var(--ink-2); }
+  .cover-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .cover-grid h3 { margin: 0 0 6px; font-size: 10pt; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  table.meta { width: 100%; border-collapse: collapse; margin: 0; font-size: 9.5pt; }
+  table.meta th, table.meta td { padding: 5px 9px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.meta th { width: 36%; background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+  table.meta.rev th { width: auto; background: var(--brand); color: #fff; }
+  table.meta.rev td:first-child { white-space: nowrap; font-weight: 600; }
 
-  h2 { margin: 26pt 0 8pt; padding-bottom: 3pt; font-size: 16pt; color: var(--brand); border-bottom: 2px solid var(--brand); }
-  h3 { margin: 18pt 0 6pt; font-size: 13pt; color: var(--brand); }
-  h4 { margin: 14pt 0 4pt; font-size: 11.5pt; color: var(--ink); }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 18px 0 0; }
+  .kpi { padding: 10px 12px; border: 1px solid var(--line); border-top: 3px solid var(--brand-2); border-radius: 4px; background: #fbfdff; }
+  .kpi b { display: block; font-size: 19pt; line-height: 1.1; color: var(--brand); }
+  .kpi span { font-size: 8.5pt; color: var(--muted); }
+
+  /* ---------- Headings ---------- */
+  h2 { margin: 34px 0 10px; padding: 0 0 5px 12px; font-size: 16pt; line-height: 1.25; color: var(--brand); border-left: 5px solid var(--brand-2); border-bottom: 1px solid var(--line); }
+  h3 { margin: 22px 0 7px; font-size: 12.5pt; color: var(--brand-2); }
+  h4 { margin: 15px 0 5px; font-size: 10.5pt; color: var(--ink); text-transform: none; }
+  h4::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 7px; background: var(--accent); border-radius: 1px; vertical-align: 1px; }
   h2, h3, h4 { break-after: avoid; }
-  .fn-meta { margin: 0 0 6pt; font-size: 10pt; color: var(--muted); }
-  .tag { display: inline-block; margin-right: 6pt; padding: 1pt 7pt; background: var(--brand); color: #fff; border-radius: 3px; font-size: 10pt; font-weight: 700; vertical-align: 1pt; }
-  p { margin: 0 0 7pt; }
-  ul, ol { margin: 0 0 8pt; padding-left: 20pt; }
-  li { margin: 2pt 0; }
-  a { color: #1a5fb4; }
+  h2.part-title { margin: 52px 0 14px; padding: 16px 20px; font-size: 19pt; color: #fff; background: linear-gradient(100deg, var(--brand) 0%, var(--brand-2) 100%); border: 0; border-bottom: 4px solid var(--accent); border-radius: 4px; }
+  h2.part-title + h2 { margin-top: 20px; }
+  .fn-meta { margin: 0 0 8px; padding: 6px 10px; font-size: 9pt; color: var(--ink-2); background: #f7f9fb; border-left: 3px solid var(--line); border-radius: 0 3px 3px 0; }
+  .part-meta { margin: 0 0 12px; }
+  .tag { display: inline-block; margin-right: 8px; padding: 1px 9px; background: var(--brand); color: #fff; border-radius: 999px; font-family: Consolas, "Courier New", monospace; font-size: 9.5pt; font-weight: 700; vertical-align: 1pt; }
+  p { margin: 0 0 8px; }
+  ul, ol { margin: 0 0 9px; padding-left: 21px; }
+  li { margin: 2px 0; }
+  a { color: #17569b; text-underline-offset: 2px; }
 
-  code { padding: 0 3pt; font-family: Consolas, "Courier New", monospace; font-size: 9.5pt; background: var(--code-bg); border-radius: 3px; color: #000; word-break: break-word; }
-  pre { margin: 6pt 0 10pt; padding: 10pt 12pt; background: var(--code-bg); border: 1px solid var(--line); border-left: 4px solid var(--brand); border-radius: 3px; overflow-x: auto; break-inside: avoid; }
-  pre code { padding: 0; background: none; font-size: 9pt; line-height: 1.45; word-break: normal; }
+  code { padding: 1px 4px; font-family: Consolas, "Cascadia Mono", "Courier New", monospace; font-size: 9pt; background: var(--code-bg); border: 1px solid var(--line-2); border-radius: 3px; color: #0b2a4a; word-break: break-word; }
+  pre { margin: 7px 0 12px; padding: 11px 14px; background: #101c2b; border-radius: 5px; overflow-x: auto; break-inside: avoid; box-shadow: inset 4px 0 0 var(--accent); }
+  pre code { padding: 0; background: none; border: 0; color: #d9e6f5; font-size: 8.6pt; line-height: 1.5; word-break: normal; }
 
-  table.grid { width: 100%; margin: 6pt 0 8pt; border-collapse: collapse; font-size: 10pt; }
-  table.grid th, table.grid td { padding: 5pt 7pt; border: 1px solid var(--line); vertical-align: top; text-align: left; }
-  table.grid thead th { background: var(--head-bg); color: #fff; font-weight: 600; }
+  table.grid { width: 100%; margin: 8px 0 12px; border-collapse: collapse; font-size: 9.4pt; border: 1px solid var(--line); }
+  table.grid th, table.grid td { padding: 6px 9px; border: 1px solid var(--line-2); vertical-align: top; text-align: left; }
+  table.grid thead th { background: var(--brand); color: #fff; font-weight: 600; border-color: #2a4f78; position: sticky; top: 0; }
   table.grid tbody tr:nth-child(even) td { background: var(--zebra); }
+  table.grid tbody tr:hover td { background: #eef4fb; }
   table.grid td.c, table.grid th.c { text-align: center; }
   table.grid tr { break-inside: avoid; }
   table.grid thead { display: table-header-group; }
+  table.grid td code, table.grid th code { font-size: 8.6pt; }
+  .tablewrap { overflow-x: auto; }
 
-  .callout { margin: 8pt 0 10pt; padding: 8pt 12pt; border-left: 4px solid; border-radius: 0 3px 3px 0; break-inside: avoid; }
+  .callout { position: relative; margin: 10px 0 12px; padding: 9px 14px 9px 42px; border-left: 4px solid; border-radius: 0 4px 4px 0; break-inside: avoid; font-size: 9.8pt; }
+  .callout::before { position: absolute; left: 13px; top: 9px; width: 20px; height: 20px; border-radius: 50%; color: #fff; font: 700 11pt/20px "Segoe UI", sans-serif; text-align: center; }
   .callout > :last-child { margin-bottom: 0; }
-  .callout .label { display: block; margin-bottom: 2pt; font-weight: 700; font-size: 10pt; text-transform: uppercase; letter-spacing: .04em; }
-  .callout.note { background: var(--note-bg); border-color: var(--note-bar); }
-  .callout.warn { background: var(--warn-bg); border-color: var(--warn-bar); }
-  .callout.ok   { background: var(--ok-bg);   border-color: var(--ok-bar); }
-  .callout.bad  { background: var(--bad-bg);  border-color: var(--bad-bar); }
+  .callout .label { display: block; margin-bottom: 2px; font-weight: 700; font-size: 9pt; text-transform: uppercase; letter-spacing: .06em; }
+  .callout.note { background: var(--note-bg); border-color: var(--note-bar); }  .callout.note::before { content: "i"; background: var(--note-bar); }
+  .callout.warn { background: var(--warn-bg); border-color: var(--warn-bar); }  .callout.warn::before { content: "!"; background: var(--warn-bar); }
+  .callout.ok   { background: var(--ok-bg);   border-color: var(--ok-bar); }    .callout.ok::before   { content: "✓"; background: var(--ok-bar); }
+  .callout.bad  { background: var(--bad-bg);  border-color: var(--bad-bar); }   .callout.bad::before  { content: "×"; background: var(--bad-bar); }
 
-  .desc { margin: 0 0 8pt; padding: 7pt 12pt; background: var(--brand-soft); border-left: 4px solid var(--brand); border-radius: 0 3px 3px 0; break-inside: avoid; }
+  .desc { margin: 0 0 9px; padding: 8px 14px; background: var(--brand-soft); border-left: 4px solid var(--brand-2); border-radius: 0 4px 4px 0; break-inside: avoid; }
   .desc strong { color: var(--brand); }
-  table.grid ol.steps { margin: 2pt 0 0; padding: 0; list-style: none; counter-reset: st; }
-  table.grid ol.steps li { margin: 3pt 0; counter-increment: st; }
+  table.grid ol.steps { margin: 2px 0 0; padding: 0; list-style: none; counter-reset: st; }
+  table.grid ol.steps li { margin: 3px 0; counter-increment: st; }
   table.grid ol.steps li::before { content: "Bước " counter(st) ": "; font-weight: 700; color: var(--brand); }
 
-  h2.part-title { margin: 0 0 8pt; padding: 8pt 12pt; font-size: 18pt; color: #fff; background: var(--brand); border: 0; border-radius: 3px; }
-  .part-meta { margin: 0 0 10pt; }
-  footer.doc-foot { margin-top: 26pt; padding-top: 6pt; border-top: 1px solid var(--line); font-size: 9pt; color: var(--muted); text-align: center; }
+  /* ---------- Evidence figures ---------- */
+  figure.shot { margin: 14px 0 18px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: #fff; overflow: hidden; break-inside: avoid; box-shadow: 0 2px 8px rgba(15,44,73,.07); }
+  figure.shot .ev-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 12px; background: #0f2c49; color: #fff; font-size: 8.5pt; }
+  figure.shot .ev-bar b { letter-spacing: .08em; text-transform: uppercase; }
+  figure.shot .ev-bar span { color: #b6c9de; }
+  figure.shot a.zoom { display: block; background: #f2f4f7; line-height: 0; }
+  figure.shot img { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--line); }
+  figure.shot figcaption { padding: 8px 12px 9px; font-size: 9pt; line-height: 1.45; color: var(--ink-2); }
+  figure.shot figcaption strong { color: var(--brand); }
+  figure.shot figcaption .look { display: block; margin-top: 3px; color: var(--ink); }
 
-  @page { size: A4; margin: 18mm 16mm; }
+  /* ---------- Diagram ---------- */
+  figure.diagram { margin: 12px 0 16px; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: #fbfdff; break-inside: avoid; }
+  figure.diagram svg { display: block; width: 100%; height: auto; }
+  figure.diagram figcaption { margin-top: 6px; font-size: 9pt; color: var(--muted); text-align: center; }
+  .svg-box { fill: #fff; stroke: var(--brand); stroke-width: 1.6; }
+  .svg-side { fill: var(--brand-soft); stroke: var(--brand); stroke-width: 1.6; }
+  .svg-t { font: 600 13px "Segoe UI", sans-serif; fill: var(--brand); }
+  .svg-s { font: 11px "Segoe UI", sans-serif; fill: var(--ink-2); }
+  .svg-m { font: 11px Consolas, monospace; fill: var(--ink-2); }
+  .svg-ln1 { stroke: #2f80ed; stroke-width: 2; fill: none; }
+  .svg-ln2 { stroke: #229a57; stroke-width: 2; fill: none; }
+  .svg-ln3 { stroke: #e08a1e; stroke-width: 2; fill: none; }
+  .svg-log { fill: #fff7e8; stroke: #e08a1e; stroke-width: 1.4; stroke-dasharray: 5 3; }
+
+  /* ---------- Misc ---------- */
+  .guide { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 10px 0 14px; }
+  .guide > div { padding: 10px 12px; border: 1px solid var(--line); border-top: 3px solid var(--brand-2); border-radius: 4px; background: #fbfdff; font-size: 9.5pt; }
+  .guide b { display: block; margin-bottom: 3px; color: var(--brand); }
+  footer.doc-foot { margin-top: 38px; padding-top: 10px; border-top: 3px solid var(--accent); display: flex; justify-content: space-between; gap: 12px; font-size: 8.5pt; color: var(--muted); }
+
+  @page { size: A4; margin: 17mm 15mm 18mm; }
   @media print {
     html, body { background: #fff; }
-    body { padding: 0; font-size: 10.5pt; }
-    .page { width: auto; margin: 0; padding: 0; box-shadow: none; }
+    body { font-size: 10pt; }
+    .layout { display: block; }
+    aside.sidebar { position: static; height: auto; overflow: visible; padding: 0 0 16px; background: #fff; color: var(--ink); border: 0; break-after: page; }
+    aside.sidebar .brand { border-color: var(--line); }
+    aside.sidebar .brand b { color: var(--brand); }
+    aside.sidebar .brand span { color: var(--muted); }
+    nav.toc summary, nav.toc .toc-flat > a { color: var(--brand); }
+    nav.toc summary::before { color: var(--muted); }
+    nav.toc li > a, nav.toc ol ol a { color: var(--ink-2); }
+    nav.toc ol ol { display: none; }
+    main.page { max-width: none; padding: 0; box-shadow: none; }
     a { color: inherit; text-decoration: none; }
-    h2.page-break { break-before: page; }
+    h2.page-break, h2.part-title { break-before: page; }
+    header.cover { break-after: page; }
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    table.grid thead th { position: static; }
+    figure.shot img { max-height: 150mm; object-fit: contain; }
   }
-  @media (max-width: 720px) {
-    .page { padding: 16px; }
-    h1.doc-title { font-size: 18pt; }
+  @media (max-width: 1040px) {
+    .layout { display: block; }
+    aside.sidebar { position: static; height: auto; max-height: 60vh; border-right: 0; border-bottom: 4px solid var(--accent); }
+    main.page { padding: 22px 16px 32px; overflow-x: clip; }
+    body { overflow-x: hidden; }
+    .cover-grid, .guide { grid-template-columns: 1fr; }
+    .kpis { grid-template-columns: repeat(2, 1fr); }
+    h1.doc-title { font-size: 23pt; }
+    table.grid { display: block; overflow-x: auto; }
   }
 </style>
 </head>
 <body>
+<div class="layout">
+<aside class="sidebar" aria-label="Mục lục">
+<div class="brand"><b>Tích hợp D365FO ⇄ DMS</b><span>Tài liệu kỹ thuật · v2.0 · 2026-11-03</span></div>
+<nav class="toc" aria-label="Mục lục">
+<div class="toc-flat"><a href="#top">Trang bìa và kiểm soát tài liệu</a></div>
+<div class="toc-flat"><a href="#overview">Tổng quan tích hợp</a></div>
+<details data-part="part1"><summary><a href="#part1">Phần 1. Đồng bộ Master Data và Schedule Sync</a></summary><ol>
+<li><a href="#p1-s1">1. Tóm tắt trong một phút</a>
+</li>
+<li><a href="#p1-s2">2. Bản đồ thành phần: tên và vị trí</a>
+</li>
+<li><a href="#p1-s3">3. Luồng chạy từng bước</a>
+</li>
+<li><a href="#p1-s4">4. Hợp đồng API giữa DMS và ERP</a>
+</li>
+<li><a href="#p1-s5">5. Cấu hình: tên, label và nơi sửa</a>
+</li>
+<li><a href="#p1-s6">6. Lịch chạy (Schedule Sync)</a>
+</li>
+<li><a href="#p1-s7">7. Lọc dữ liệu, mốc đồng bộ và phân trang (SyncFull)</a>
+</li>
+<li><a href="#p1-s8">8. Cơ chế khóa chống chạy chồng</a>
+</li>
+<li><a href="#p1-s9">9. Các cờ trạng thái: khi nào bật, khi nào tắt</a>
+</li>
+<li><a href="#p1-s10">10. Dữ liệu được đổ vào bảng nào của DMS</a>
+</li>
+<li><a href="#p1-s11">11. Lỗi, cảnh báo và cách kiểm tra</a>
+</li>
+<li><a href="#p1-s12">12. Checklist dành cho ERP developer</a>
+</li>
+</ol></details>
+<details data-part="part2"><summary><a href="#part2">Phần 2. Webhook Inbound: ERP gửi vào DMS</a></summary><ol>
+<li><a href="#p2-s1">1. Tổng quan</a>
+</li>
+<li><a href="#p2-s2">2. Endpoint và định dạng request / response</a>
+</li>
+<li><a href="#p2-s3">3. DMS bắt webhook và xử lý như thế nào</a>
+</li>
+<li><a href="#p2-s4">4. Danh sách function Inbound</a>
+</li>
+<li><a href="#p2-s5">5. Chi tiết từng function</a>
+<ol><li><a href="#p2-fn-1_IVCPurchTable_Confirm">1_IVCPurchTable_Confirm</a></li><li><a href="#p2-fn-2_PurchTable_Confirm">2_PurchTable_Confirm</a></li><li><a href="#p2-fn-3_InventTransfer_Shipped">3_InventTransfer_Shipped</a></li><li><a href="#p2-fn-6_PurchTable_Confirm">6_PurchTable_Confirm</a></li><li><a href="#p2-fn-7_PurchTable_Quantity">7_PurchTable_Quantity</a></li><li><a href="#p2-fn-8_PostPacking">8_PostPacking</a></li><li><a href="#p2-fn-8a_CancelDelivered">8a_CancelDelivered</a></li><li><a href="#p2-fn-8a_ConfirmSO">8a_ConfirmSO</a></li><li><a href="#p2-fn-9_PostInvoice">9_PostInvoice</a></li><li><a href="#p2-fn-11_ScheduleOnhand">11_ScheduleOnhand</a></li><li><a href="#p2-fn-Sync_ResultSO">Sync_ResultSO</a></li><li><a href="#p2-fn-Sync_ResultTJ">Sync_ResultTJ</a></li><li><a href="#p2-fn-SO_SyncInventory">SO_SyncInventory</a></li><li><a href="#p2-fn-PO_SyncInventory">PO_SyncInventory</a></li><li><a href="#p2-fn-SO_Return">SO_Return</a></li><li><a href="#p2-fn-Sync_InvoiceSO">Sync_InvoiceSO</a></li><li><a href="#p2-fn-Receipt_PO_Local">Receipt_PO_Local</a></li><li><a href="#p2-fn-Cancel_PO_Local">Cancel_PO_Local</a></li></ol>
+</li>
+<li><a href="#p2-s6">6. Thứ tự gửi và phụ thuộc giữa các function</a>
+</li>
+<li><a href="#p2-s7">7. Kiểm tra kết quả và xử lý sự cố</a>
+</li>
+<li><a href="#p2-s8">8. Checklist dành cho ERP developer</a>
+</li>
+</ol></details>
+<details data-part="part3"><summary><a href="#part3">Phần 3. Webhook Outbound: DMS gọi sang ERP</a></summary><ol>
+<li><a href="#p3-s1">1. Tổng quan</a>
+</li>
+<li><a href="#p3-s2">2. Giao thức DMS gọi ERP (chung cho mọi function)</a>
+</li>
+<li><a href="#p3-s3">3. Danh sách và chi tiết function Outbound</a>
+<ol><li><a href="#p3-fn-CreateSO">3.1. CreateSO</a></li><li><a href="#p3-fn-CreateDOPart">3.2. CreateDOPart</a></li><li><a href="#p3-fn-CreateDOPart_Claim">3.3. CreateDOPart_Claim</a></li><li><a href="#p3-fn-PostPackingSlip">3.4. PostPackingSlip</a></li><li><a href="#p3-fn-ERP_SOCancelled">3.5. ERP_SOCancelled</a></li><li><a href="#p3-fn-createPurchaseOrder">3.6. createPurchaseOrder</a></li><li><a href="#p3-fn-ERP_ShipmentCompleted">3.7. ERP_ShipmentCompleted</a></li><li><a href="#p3-fn-ERP_RegistrationPO_Loc">3.8. ERP_RegistrationPO_Loc</a></li><li><a href="#p3-fn-CreateTOVehicle">3.9. CreateTOVehicle</a></li><li><a href="#p3-fn-CreateTOPart">3.10. CreateTOPart</a></li><li><a href="#p3-fn-4_SF_InventoryTransaction_Completed">3.11. 4_SF_InventoryTransaction_Completed</a></li><li><a href="#p3-fn-5_SF_BinningSlip_Completed">3.12. 5_SF_BinningSlip_Completed</a></li></ol>
+</li>
+<li><a href="#p3-s7">4. Vòng gửi đi và gửi về của từng function</a>
+</li>
+<li><a href="#p3-s8">5. Checklist dành cho ERP developer</a>
+</li>
+</ol></details>
+<details data-part="part4"><summary><a href="#part4">Phần 4. Bảng tra field mapping Master Data</a></summary><ol>
+<li><a href="#p4-s1">1. Cách đọc tài liệu này</a>
+</li>
+<li><a href="#p4-s2">2. Tổng hợp các bảng</a>
+</li>
+<li><a href="#p4-s3">3. Danh mục nền</a>
+</li>
+<li><a href="#p4-s4">4. Đối tác và nhân sự</a>
+</li>
+<li><a href="#p4-s5">5. Sản phẩm và xe</a>
+</li>
+<li><a href="#p4-s6">6. Tồn kho và chuyển kho</a>
+</li>
+<li><a href="#p4-s7">7. Công nợ và hóa đơn</a>
+</li>
+<li><a href="#p4-s8">8. Đang tắt</a>
+</li>
+<li><a href="#p4-s9">9. Ghi chú nghiệp vụ liên bảng</a>
+</li>
+<li><a href="#p4-s10">10. Lookup được nối sau khi đồng bộ (BatchMasterdata_LookupResolver)</a>
+</li>
+</ol></details>
+<details data-part="appendixA"><summary><a href="#appendixA">Phụ lục A. Bản đồ mã nguồn của các Phần 2, 3, 4</a></summary><ol>
+<li><a href="#aA1">A.1. Quy ước đường dẫn</a>
+</li>
+<li><a href="#aA2">A.2. Thành phần dùng chung cho webhook</a>
+</li>
+<li><a href="#aA3">A.3. Webhook Inbound (Phần 2): function_name và class xử lý</a>
+</li>
+<li><a href="#aA4">A.4. Webhook Outbound (Phần 3): function, class gửi và nơi tạo hook</a>
+</li>
+<li><a href="#aA5">A.5. Master Data (Phần 1 và Phần 4)</a>
+</li>
+</ol></details>
+<div class="toc-flat"><a href="#appendixC">Phụ lục C. Evidence trên Partial</a></div>
+</nav>
+</aside>
 <main class="page">
 
-  <p class="doc-eyebrow">Tài liệu tích hợp · Dành cho developer phía ERP</p>
-  <h1 class="doc-title">Tích hợp D365FO ⇄ DMS</h1>
-  <p class="doc-sub">Cách DMS (Salesforce) đồng bộ dữ liệu và trao đổi webhook với ERP (D365FO)</p>
-  <nav class="toc" aria-label="Mục lục">
-    <h2>Mục lục</h2>
-    <ol>
-      <li><a href="#part1">Phần 1. Đồng bộ Master Data và Schedule Sync</a>
-        <ol><li><a href="#p1-s1">Tóm tắt trong một phút</a></li><li><a href="#p1-s2">Bản đồ thành phần: tên và vị trí</a></li><li><a href="#p1-s3">Luồng chạy từng bước</a></li><li><a href="#p1-s4">Hợp đồng API giữa DMS và ERP</a></li><li><a href="#p1-s5">Cấu hình: tên, label và nơi sửa</a></li><li><a href="#p1-s6">Lịch chạy (Schedule Sync)</a></li><li><a href="#p1-s7">Lọc dữ liệu, mốc đồng bộ và phân trang (SyncFull)</a></li><li><a href="#p1-s8">Cơ chế khóa chống chạy chồng</a></li><li><a href="#p1-s9">Các cờ trạng thái</a></li><li><a href="#p1-s10">Dữ liệu được đổ vào bảng nào của DMS</a></li><li><a href="#p1-s11">Lỗi, cảnh báo và cách kiểm tra</a></li><li><a href="#p1-s12">Checklist dành cho ERP developer</a></li></ol>
-      </li>
-      <li><a href="#part2">Phần 2. Webhook Inbound: ERP gửi vào DMS</a>
-        <ol>
-      <li><a href="#p2-s1">Tổng quan</a></li>
-      <li><a href="#p2-s2">Endpoint và định dạng request / response</a></li>
-      <li><a href="#p2-s3">DMS bắt webhook và xử lý như thế nào</a></li>
-      <li><a href="#p2-s4">Danh sách function Inbound</a></li>
-      <li><a href="#p2-s5">Chi tiết từng function</a>
-        <ol type="a">
-<li><a href="#p2-fn-1_IVCPurchTable_Confirm"><code>1_IVCPurchTable_Confirm</code></a></li>
-<li><a href="#p2-fn-2_PurchTable_Confirm"><code>2_PurchTable_Confirm</code></a></li>
-<li><a href="#p2-fn-3_InventTransfer_Shipped"><code>3_InventTransfer_Shipped</code></a></li>
-<li><a href="#p2-fn-6_PurchTable_Confirm"><code>6_PurchTable_Confirm</code></a></li>
-<li><a href="#p2-fn-7_PurchTable_Quantity"><code>7_PurchTable_Quantity</code></a></li>
-<li><a href="#p2-fn-8_PostPacking"><code>8_PostPacking</code></a></li>
-<li><a href="#p2-fn-8a_CancelDelivered"><code>8a_CancelDelivered</code></a></li>
-<li><a href="#p2-fn-8a_ConfirmSO"><code>8a_ConfirmSO</code></a></li>
-<li><a href="#p2-fn-9_PostInvoice"><code>9_PostInvoice</code></a></li>
-<li><a href="#p2-fn-11_ScheduleOnhand"><code>11_ScheduleOnhand</code></a></li>
-<li><a href="#p2-fn-Sync_ResultSO"><code>Sync_ResultSO</code></a></li>
-<li><a href="#p2-fn-Sync_ResultTJ"><code>Sync_ResultTJ</code></a></li>
-<li><a href="#p2-fn-SO_SyncInventory"><code>SO_SyncInventory</code></a></li>
-<li><a href="#p2-fn-PO_SyncInventory"><code>PO_SyncInventory</code></a></li>
-<li><a href="#p2-fn-SO_Return"><code>SO_Return</code></a></li>
-<li><a href="#p2-fn-Sync_InvoiceSO"><code>Sync_InvoiceSO</code></a></li>
-<li><a href="#p2-fn-Receipt_PO_Local"><code>Receipt_PO_Local</code></a></li>
-<li><a href="#p2-fn-Cancel_PO_Local"><code>Cancel_PO_Local</code></a></li>
-        </ol>
-      </li>
-      <li><a href="#p2-s6">Thứ tự gửi và phụ thuộc giữa các function</a></li>
-      <li><a href="#p2-s7">Kiểm tra kết quả và xử lý sự cố</a></li>
-      <li><a href="#p2-s8">Checklist dành cho ERP developer</a></li>
-    </ol>
-      </li>
-      <li><a href="#part3">Phần 3. Webhook Outbound: DMS gọi sang ERP</a>
-        <ol><li><a href="#p3-s1">Tổng quan</a></li><li><a href="#p3-s2">Giao thức DMS gọi ERP</a></li><li><a href="#p3-s3">Danh sách function Outbound</a></li><li><a href="#p3-s4">Nhóm Sales Order và Delivery Order</a></li><li><a href="#p3-s5">Nhóm Purchase Order, Shipment và Transfer Order</a></li><li><a href="#p3-s6">Nhóm đang tắt</a></li><li><a href="#p3-s7">Vòng gửi đi và gửi về của từng function</a></li><li><a href="#p3-s8">Checklist dành cho ERP developer</a></li></ol>
-      </li>
-      <li><a href="#part4">Phần 4. Bảng tra field mapping Master Data</a>
-        <ol><li><a href="#p4-s1">Cách đọc tài liệu này</a></li><li><a href="#p4-s2">Tổng hợp các bảng</a></li><li><a href="#p4-s3">Danh mục nền</a></li><li><a href="#p4-s4">Đối tác và nhân sự</a></li><li><a href="#p4-s5">Sản phẩm và xe</a></li><li><a href="#p4-s6">Tồn kho và chuyển kho</a></li><li><a href="#p4-s7">Công nợ và hóa đơn</a></li><li><a href="#p4-s8">Đang tắt</a></li><li><a href="#p4-s9">Ghi chú nghiệp vụ liên bảng</a></li><li><a href="#p4-s10">Lookup được nối sau khi đồng bộ</a></li></ol>
-      </li>
-      <li><a href="#appendixA">Phụ lục A. Bản đồ mã nguồn của các Phần 2, 3, 4</a>
-        <ol><li><a href="#aA1">Quy ước đường dẫn</a></li><li><a href="#aA2">Thành phần dùng chung cho webhook</a></li><li><a href="#aA3">Webhook Inbound: function và class xử lý</a></li><li><a href="#aA4">Webhook Outbound: function, class gửi, nơi tạo hook</a></li><li><a href="#aA5">Master Data</a></li></ol>
-      </li>
-    </ol>
-  </nav>
+  <header class="cover" id="top">
+    <div class="cover-band"><span class="org">IVC · Hệ thống DMS (Salesforce)</span><span class="cls">Tài liệu nội bộ</span></div>
+    <p class="doc-eyebrow">Tài liệu kỹ thuật tích hợp · Dành cho developer phía ERP</p>
+    <h1 class="doc-title">Tích hợp D365FO ⇄ DMS</h1>
+    <p class="doc-sub">Cách DMS (Salesforce) đồng bộ master data và trao đổi webhook hai chiều với ERP (Dynamics 365 Finance &amp; Operations): giao thức, cấu hình, payload mẫu và bằng chứng kiểm chứng trên org Partial.</p>
+    <div class="cover-grid">
+      <div>
+        <h3>Thông tin tài liệu</h3>
+        <table class="meta">
+          <tr><th>Phiên bản</th><td>2.0 (viết lại bố cục, bổ sung evidence)</td></tr>
+          <tr><th>Cập nhật lần cuối</th><td>2026-11-03</td></tr>
+          <tr><th>Đối tượng đọc</th><td>Developer ERP (D365FO), DMS admin, BA tích hợp</td></tr>
+          <tr><th>Org tham chiếu</th><td>Partial (sandbox). QA và PROD cùng cấu trúc, giá trị cấu hình có thể khác</td></tr>
+          <tr><th>Phạm vi</th><td>Master Data &amp; Schedule Sync, Webhook Inbound, Webhook Outbound, field mapping, bản đồ mã nguồn</td></tr>
+          <tr><th>Tình trạng</th><td>Phần 1 đến 4 và Phụ lục A, C hoàn tất. Phần 5 và Phụ lục B chưa viết</td></tr>
+        </table>
+      </div>
+      <div>
+        <h3>Lịch sử thay đổi</h3>
+        <table class="meta rev">
+          <thead><tr><th>Phiên bản</th><th>Ngày</th><th>Nội dung</th></tr></thead>
+          <tr><td>1.x</td><td>2026-10-23 đến 2026-11-02</td><td>Phần 1 đến 4, Phụ lục A; bổ sung <code>SO_Return</code>, <code>Sync_InvoiceSO</code>, <code>Receipt_PO_Local</code>, <code>Cancel_PO_Local</code></td></tr>
+          <tr><td>2.0</td><td>2026-11-03</td><td>Bố cục mới (mục lục cạnh, trang bìa, kiểm soát tài liệu); thêm Tổng quan; chèn 10 ảnh evidence từ Partial (Phụ lục C); cập nhật lịch ở mục 6.3; sửa hai link Manage ở mục 2.3</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><b>3</b><span>kênh tích hợp: Master Data, Inbound, Outbound</span></div>
+      <div class="kpi"><b>18</b><span>function webhook Inbound (ERP → DMS)</span></div>
+      <div class="kpi"><b>9 + 2</b><span>function Outbound đang chạy + đang tắt</span></div>
+      <div class="kpi"><b>56</b><span>job <code>D365Sync_*</code> đang lập lịch trên Partial</span></div>
+    </div>
+  </header>
+
+  <h2 id="overview">Tổng quan tích hợp</h2>
+  <p>DMS và ERP trao đổi dữ liệu qua <strong>ba kênh</strong>. Cả ba đều ghi lại mỗi lần gọi thành một dòng của object <code>D365FO_Hook__c</code>, nên đây là nơi đầu tiên cần mở khi kiểm tra sự cố.</p>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 900 372" role="img" aria-label="Sơ đồ ba kênh tích hợp giữa DMS và ERP">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2f80ed"/></marker>
+        <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#229a57"/></marker>
+        <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e08a1e"/></marker>
+      </defs>
+      <rect class="svg-side" x="10" y="10" width="250" height="352" rx="8"/>
+      <text class="svg-t" x="135" y="36" text-anchor="middle">DMS · Salesforce</text>
+      <rect class="svg-box" x="30" y="54" width="210" height="66" rx="5"/>
+      <text class="svg-s" x="135" y="76" text-anchor="middle">Sched_MasterDataD365</text>
+      <text class="svg-s" x="135" y="92" text-anchor="middle">QueueCalloutMasterDataD365</text>
+      <text class="svg-s" x="135" y="108" text-anchor="middle">Batch_MasterData_Batch</text>
+      <rect class="svg-box" x="30" y="148" width="210" height="66" rx="5"/>
+      <text class="svg-s" x="135" y="170" text-anchor="middle">ApiD365FOHook (REST)</text>
+      <text class="svg-s" x="135" y="186" text-anchor="middle">Batch theo function_name</text>
+      <text class="svg-s" x="135" y="202" text-anchor="middle">(Batch1… đến Batch_SF_*)</text>
+      <rect class="svg-box" x="30" y="242" width="210" height="52" rx="5"/>
+      <text class="svg-s" x="135" y="264" text-anchor="middle">Trigger handler + Batch_SF_*</text>
+      <text class="svg-s" x="135" y="280" text-anchor="middle">dựng payload và gọi ERP</text>
+      <rect class="svg-log" x="30" y="312" width="210" height="38" rx="5"/>
+      <text class="svg-t" x="135" y="336" text-anchor="middle">D365FO_Hook__c (nhật ký)</text>
+
+      <rect class="svg-side" x="640" y="10" width="250" height="352" rx="8"/>
+      <text class="svg-t" x="765" y="36" text-anchor="middle">ERP · D365FO</text>
+      <rect class="svg-box" x="660" y="54" width="210" height="66" rx="5"/>
+      <text class="svg-s" x="765" y="76" text-anchor="middle">OMN1_ServiceAPI_MasterData</text>
+      <text class="svg-m" x="765" y="94" text-anchor="middle">getData</text>
+      <text class="svg-s" x="765" y="110" text-anchor="middle">(bảng ERP, phân trang)</text>
+      <rect class="svg-box" x="660" y="148" width="210" height="66" rx="5"/>
+      <text class="svg-s" x="765" y="170" text-anchor="middle">Dịch vụ / Business event</text>
+      <text class="svg-s" x="765" y="186" text-anchor="middle">đẩy sự kiện: PO, Packing Slip,</text>
+      <text class="svg-s" x="765" y="202" text-anchor="middle">Invoice, Onhand, Return…</text>
+      <rect class="svg-box" x="660" y="242" width="210" height="52" rx="5"/>
+      <text class="svg-s" x="765" y="264" text-anchor="middle">API tạo chứng từ</text>
+      <text class="svg-s" x="765" y="280" text-anchor="middle">SO, PO, TO, Journal, Receipt…</text>
+
+      <path class="svg-ln1" d="M240,76 L660,76" marker-end="url(#a1)"/>
+      <path class="svg-ln1" d="M660,100 L240,100" marker-end="url(#a1)" stroke-dasharray="5 4"/>
+      <text class="svg-t" x="450" y="66" text-anchor="middle">① Master Data · DMS kéo theo lịch</text>
+      <text class="svg-s" x="450" y="118" text-anchor="middle">request getData → response Data + HasMore</text>
+
+      <path class="svg-ln2" d="M660,186 L240,186" marker-end="url(#a2)"/>
+      <text class="svg-t" x="450" y="170" text-anchor="middle">② Webhook Inbound · ERP đẩy vào DMS</text>
+      <text class="svg-m" x="450" y="205" text-anchor="middle">POST /services/apexrest/ApiD365FOHook</text>
+
+      <path class="svg-ln3" d="M240,268 L660,268" marker-end="url(#a3)"/>
+      <path class="svg-ln3" d="M660,284 L240,284" marker-end="url(#a3)" stroke-dasharray="5 4"/>
+      <text class="svg-t" x="450" y="258" text-anchor="middle">③ Webhook Outbound · DMS gọi sang ERP</text>
+      <text class="svg-s" x="450" y="304" text-anchor="middle">payload _request → Success / Message (có chiều về qua kênh ②)</text>
+    </svg>
+    <figcaption>Hình 0. Ba kênh tích hợp. Nét liền là chiều khởi tạo, nét đứt là phản hồi.</figcaption>
+  </figure>
+
+  <table class="grid">
+    <thead><tr><th style="width:17%">Kênh</th><th style="width:19%">Ai khởi tạo</th><th style="width:30%">Cách chạy</th><th>Đọc ở đâu</th></tr></thead>
+    <tbody>
+      <tr><td><strong>① Master Data</strong></td><td>DMS (theo lịch)</td><td>Job <code>D365Sync_*</code> gọi <code>getData</code>, lấy bản ghi có <code>ModifiedDateTime</code> mới hơn mốc, phân trang theo <code>RecId</code></td><td><a href="#part1">Phần 1</a> (cơ chế), <a href="#part4">Phần 4</a> (mapping field)</td></tr>
+      <tr><td><strong>② Inbound</strong></td><td>ERP</td><td>ERP <code>POST</code> JSON có <code>function_name</code> tới <code>ApiD365FOHook</code>; DMS lưu hook rồi chạy batch tương ứng</td><td><a href="#part2">Phần 2</a></td></tr>
+      <tr><td><strong>③ Outbound</strong></td><td>DMS (theo sự kiện nghiệp vụ)</td><td>Trigger tạo hook kèm payload; batch gửi nguyên văn sang endpoint ERP và ghi phản hồi lại hook</td><td><a href="#part3">Phần 3</a></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Nên đọc phần nào trước</h3>
+  <div class="guide">
+    <div><b>Developer ERP làm API trả dữ liệu</b>Đọc Phần 1 mục 4 (hợp đồng <code>getData</code>) rồi Phần 4 cho bảng cụ thể.</div>
+    <div><b>Developer ERP đẩy webhook vào DMS</b>Đọc Phần 2 mục 1 đến 3, sau đó mục 5 của function cần dùng và mục 8 (checklist).</div>
+    <div><b>Developer ERP nhận lời gọi từ DMS</b>Đọc Phần 3 mục 2 (giao thức chung) và mục của function cần cài endpoint.</div>
+  </div>
+
+  <h3>Danh mục ảnh evidence</h3>
+  <p>Các ảnh chụp trực tiếp trên org <strong>Partial</strong> bằng Playwright, đặt cạnh nội dung mà chúng chứng minh. Bảng tổng hợp và ghi chú đối chiếu nằm ở <a href="#appendixC">Phụ lục C</a>.</p>
+  <ol style="columns:2; column-gap:28px; font-size:9.3pt"><li><a href="#figE1"><strong>E1</strong></a> Job lập lịch D365Sync_* trên Partial <span style="color:var(--muted)">(Setup → Scheduled Jobs)</span></li><li><a href="#figE2"><strong>E2</strong></a> Danh sách bản ghi Custom Metadata MasterDataD365 <span style="color:var(--muted)">(Setup → Custom Metadata Types → MasterDataD365 → Manage Records)</span></li><li><a href="#figE3"><strong>E3</strong></a> Custom Setting D365FO Settings (dòng cấp org) <span style="color:var(--muted)">(Setup → Custom Settings → D365FO Settings → Manage)</span></li><li><a href="#figE4"><strong>E4</strong></a> Custom Setting AUTHENTICATION API <span style="color:var(--muted)">(Setup → Custom Settings → AUTHENTICATION API → Manage)</span></li><li><a href="#figE5"><strong>E5</strong></a> Hook Inbound thành công: 8_PostPacking (DH-00191252) <span style="color:var(--muted)">(Tab D365FO_Hook → bản ghi DH-00191252)</span></li><li><a href="#figE6"><strong>E6</strong></a> Hook Inbound lỗi: Cancel_PO_Local (DH-00191150) <span style="color:var(--muted)">(Tab D365FO_Hook → bản ghi DH-00191150)</span></li><li><a href="#figE7"><strong>E7</strong></a> Hook Outbound: CreateSO (DH-00191824) <span style="color:var(--muted)">(Tab D365FO_Hook → bản ghi DH-00191824)</span></li><li><a href="#figE8"><strong>E8</strong></a> Hook Master Data: InventTable (DH-00191834) <span style="color:var(--muted)">(Tab D365FO_Hook → bản ghi DH-00191834)</span></li><li><a href="#figE9"><strong>E9</strong></a> Tab Run Test: nút Apply Sync Schedule Configs <span style="color:var(--muted)">(App DLR → tab Run Test)</span></li><li><a href="#figE10"><strong>E10</strong></a> Apex Jobs: chuỗi Queueable → Batch của master data <span style="color:var(--muted)">(Setup → Apex Jobs)</span></li></ol>
 
   <h2 class="part-title page-break" id="part1">Phần 1. Đồng bộ Master Data và Schedule Sync</h2>
 
@@ -213,8 +457,8 @@
     <thead><tr><th style="width:30%">Cần xem</th><th>Liên kết</th></tr></thead>
     <tbody>
       <tr><td>Cấu hình từng bảng ERP (<code>MasterDataD365</code>)</td><td><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/CustomMetadata/page?address=%2Fm02%3Fsetupid%3DCustomMetadata" target="_blank" rel="noopener">Danh sách bản ghi (Manage Records)</a><br><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/CustomMetadata/page?address=%2F01IVu000003YEPf" target="_blank" rel="noopener">Định nghĩa Custom Metadata Type</a><br><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/ObjectManager/MasterDataD365__mdt/FieldsAndRelationships/view" target="_blank" rel="noopener">Danh sách field (Object Manager)</a></td></tr>
-      <tr><td>Công tắc và mốc đồng bộ (<code>D365FO Settings</code>)</td><td><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/CustomSettings/page?address=%2Fsetup%2Fui%2FlistCustomSettingsData.apexp%3Fid%3D01IVu000003YEPA" target="_blank" rel="noopener">Manage: xem và sửa giá trị (dòng cấp org)</a><br><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/ObjectManager/D365FO_Settings__c/FieldsAndRelationships/view" target="_blank" rel="noopener">Danh sách field (Object Manager)</a></td></tr>
-      <tr><td>Kết nối ERP (<code>AUTHENTICATION API</code>)</td><td><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/CustomSettings/page?address=%2Fsetup%2Fui%2FlistCustomSettingsData.apexp%3Fid%3D01IVu000003YEOb" target="_blank" rel="noopener">Manage: xem giá trị</a><br><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/ObjectManager/AUTHENTICATIONAPI__c/FieldsAndRelationships/view" target="_blank" rel="noopener">Danh sách field (Object Manager)</a></td></tr>
+      <tr><td>Công tắc và mốc đồng bộ (<code>D365FO Settings</code>)</td><td><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/CustomSettings/page?address=%2Fsetup%2Fui%2FlistCustomSettingsData.apexp%3Fid%3Da0a" target="_blank" rel="noopener">Manage: xem và sửa giá trị (dòng cấp org)</a><br><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/ObjectManager/D365FO_Settings__c/FieldsAndRelationships/view" target="_blank" rel="noopener">Danh sách field (Object Manager)</a></td></tr>
+      <tr><td>Kết nối ERP (<code>AUTHENTICATION API</code>)</td><td><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/CustomSettings/page?address=%2Fsetup%2Fui%2FlistCustomSettingsData.apexp%3Fid%3Da03" target="_blank" rel="noopener">Manage: xem giá trị</a><br><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/ObjectManager/AUTHENTICATIONAPI__c/FieldsAndRelationships/view" target="_blank" rel="noopener">Danh sách field (Object Manager)</a></td></tr>
       <tr><td>Nhật ký mỗi lần gọi (<code>D365FO_Hook</code>)</td><td><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/o/D365FO_Hook__c/list?filterName=__Recent" target="_blank" rel="noopener">Danh sách bản ghi</a><br><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/ObjectManager/D365FO_Hook__c/FieldsAndRelationships/view" target="_blank" rel="noopener">Danh sách field (Object Manager)</a></td></tr>
       <tr><td>Log lỗi lập lịch (<code>DevLog</code>)</td><td><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/o/DevLog__c/list?filterName=__Recent" target="_blank" rel="noopener">Danh sách bản ghi</a></td></tr>
       <tr><td>Job lập lịch <code>D365Sync_*</code></td><td><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/ScheduledJobs/home" target="_blank" rel="noopener">Scheduled Jobs</a><br><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/setup/AsyncApexJobs/home" target="_blank" rel="noopener">Apex Jobs (batch / queueable đang và đã chạy)</a></td></tr>
@@ -251,6 +495,8 @@
                  │                                                          ▼  ghi Output
         (HasMore = true: tạo hook trang kế)                          Batch_MasterData_Batch
                  └───────────────  finish()  ◄──── process&lt;Bảng&gt;() upsert vào DMS</code></pre>
+
+  <figure class="shot" id="figE10"><div class="ev-bar"><b>Evidence E10</b><span>Org Partial · Setup → Apex Jobs · 2026-11-03 10:21</span></div><a class="zoom" href="images/d365fo/e10-apex-jobs.png" target="_blank" rel="noopener"><img src="images/d365fo/e10-apex-jobs.png" alt="Apex Jobs: chuỗi Queueable → Batch của master data" loading="lazy" width="1440" height="900"></a><figcaption><strong>Hình E10.</strong> Apex Jobs: chuỗi Queueable → Batch của master data.<span class="look">Mỗi lần gọi ERP sinh một cặp việc: <code>QueueCalloutMasterDataD365</code> (Queueable, gọi <code>getData</code>) rồi <code>Batch_MasterData_Batch</code> (Batch Apex, ghi vào object đích). Tất cả <em>Completed</em>, <em>Failures</em> = 0.</span></figcaption></figure>
 <h2 id="p1-s4" class="page-break">4. Hợp đồng API giữa DMS và ERP</h2><p class="fn-meta"><strong>Trong source</strong> (thư mục <code>force-app/main/default/classes/</code> nếu không ghi khác): QueueCalloutMasterDataD365.cls (getAccessToken, execute); CreateBodyMasterDataD365DO.cls (buildBody).</p>
 
   <h3>4.1. Xác thực</h3>
@@ -363,6 +609,8 @@
     Thêm bảng mới: tạo thêm bản ghi <code>MasterDataD365</code>, tạo các field cùng họ trong <code>D365FO Settings</code> (mục 5.2), thêm tên bảng vào <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu000002ew2XIAQ" target="_blank" rel="noopener"><code>D365SyncLockHelper.TABLE_TO_READY_FIELD</code></a>, <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e0XIAQ" target="_blank" rel="noopener"><code>Sched_MasterDataD365.buildTableSyncMap()</code></a>, <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e17IAA" target="_blank" rel="noopener"><code>TriggerHookD365FOHandle</code></a> (cả <code>afterInsert</code> và <code>afterUpdate</code>) và viết hàm <code>process&lt;Bảng&gt;</code> trong <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023dyyIAA" target="_blank" rel="noopener"><code>Batch_MasterData_Batch</code></a>. Quy trình chi tiết: <code>docs/Quy trình/Quy_trinh_chuan_them_API_D365FO.md</code>. Ngừng một bảng: bỏ tick <strong>isSync</strong>, rồi bấm <em>Apply Sync Schedule Configs</em> trên tab <em>Run Test</em>.
   </div>
 
+  <figure class="shot" id="figE2"><div class="ev-bar"><b>Evidence E2</b><span>Org Partial · Setup → Custom Metadata Types → MasterDataD365 → Manage Records · 2026-11-03 10:16</span></div><a class="zoom" href="images/d365fo/e02-masterdatad365-records.png" target="_blank" rel="noopener"><img src="images/d365fo/e02-masterdatad365-records.png" alt="Danh sách bản ghi Custom Metadata MasterDataD365" loading="lazy" width="1440" height="900"></a><figcaption><strong>Hình E2.</strong> Danh sách bản ghi Custom Metadata MasterDataD365.<span class="look">Mỗi dòng là một bảng ERP: <em>Table</em>, <em>Limit</em>, hai cờ <em>isSync</em> / <em>syncfull</em> và danh sách <em>Select Fields</em>. Hai dòng <em>Price Book</em> không tick <em>isSync</em> nên không đồng bộ.</span></figcaption></figure>
+
   <h3>5.2. Custom Setting <strong>D365FO Settings</strong> (<code>D365FO_Settings__c</code>)</h3>
   <p>Chỉ có <strong>một dòng cấp org</strong> (Default Organization Level Value). Mọi bảng dùng chung dòng này.</p>
   <table class="grid">
@@ -379,6 +627,8 @@
   </table>
   <p>Ví dụ với bảng <code>InventBatch</code>: nhãn <strong>D365fo InventBatch Sched last sync</strong> là field <code>D365fo_InventBatch_Sched_last_sync__c</code>. Chữ <code>&lt;Bảng&gt;</code> trong tên field là tên bảng ERP, trừ một số bảng viết tắt: <code>IVCAMDeviceExterior</code> thành <code>IVCAMDevExt</code>, <code>IVCAMDeviceModelCode</code> thành <code>IVCAMMdlCode</code>, <code>UnitOfMeasureConversion</code> thành <code>UOMConversion</code>, <code>InventItemGroupItem</code> thành <code>InventItemGrpItem</code> và <code>InventTransferTable</code> thành <code>InventTransferTbl</code> (chỉ với field <code>Sched_Ready</code>). Bốn bảng <code>InventItemGroupItem</code>, <code>VendInvoiceJour</code>, <code>InventTransferTable</code>, <code>InventTransferLine</code> không có bộ field <code>Sched_last_sync</code> và <code>Sched_RecId</code> riêng, nên dùng chung bộ <code>last_sync</code> và <code>RecId</code> thường cho cả luồng schedule lẫn chạy tay.</p>
 
+  <figure class="shot" id="figE3"><div class="ev-bar"><b>Evidence E3</b><span>Org Partial · Setup → Custom Settings → D365FO Settings → Manage · 2026-11-03 10:18</span></div><a class="zoom" href="images/d365fo/e03-d365fo-settings.png" target="_blank" rel="noopener"><img src="images/d365fo/e03-d365fo-settings.png" alt="Custom Setting D365FO Settings (dòng cấp org)" loading="lazy" width="1440" height="900"></a><figcaption><strong>Hình E3.</strong> Custom Setting D365FO Settings (dòng cấp org).<span class="look">Công tắc <code>isRun</code> (đang bật trên Partial) và các mốc <code>D365fo_&lt;Bảng&gt;_last_sync</code> / <code>…_RecId</code>. Giá trị <code>01/01/1900</code> nghĩa là bảng chưa có mốc. Danh sách email cảnh báo đã được ẩn khi chụp.</span></figcaption></figure>
+
   <h3>5.3. Custom Setting <strong>AUTHENTICATION API</strong> (<code>AUTHENTICATIONAPI__c</code>)</h3>
   <table class="grid">
     <thead><tr><th style="width:24%">Label</th><th style="width:24%">API name</th><th>Dùng vào việc</th></tr></thead>
@@ -390,6 +640,8 @@
       <tr><td><strong>Service URL</strong></td><td><code>Service_URL__c</code></td><td>Địa chỉ gốc của dịch vụ ERP. DMS ghép thêm <code>OMN1_ServiceAPI_MasterData/getData</code></td></tr>
     </tbody>
   </table>
+
+  <figure class="shot" id="figE4"><div class="ev-bar"><b>Evidence E4</b><span>Org Partial · Setup → Custom Settings → AUTHENTICATION API → Manage · 2026-11-03 10:18</span></div><a class="zoom" href="images/d365fo/e04-authentication-api.png" target="_blank" rel="noopener"><img src="images/d365fo/e04-authentication-api.png" alt="Custom Setting AUTHENTICATION API" loading="lazy" width="1440" height="900"></a><figcaption><strong>Hình E4.</strong> Custom Setting AUTHENTICATION API.<span class="look">Năm giá trị kết nối ERP: <em>Auth URL</em>, <em>Resource URL</em>, <em>Service URL</em> (Partial trỏ tới ERP UAT) cùng <em>Client ID</em> và <em>Client Secret</em>. Hai giá trị bí mật đã được ẩn khi chụp.</span></figcaption></figure>
 
   <h3>5.4. Object <strong>D365FO_Hook</strong> (<code>D365FO_Hook__c</code>): nhật ký mỗi lần gọi</h3>
   <p>Mỗi lần DMS gọi ERP là một dòng. Xem ở App Launcher → tab <em>D365FO_Hook</em>. Các field dùng cho master data:</p>
@@ -405,6 +657,8 @@
       <tr><td><strong>isRun</strong>, <strong>isSync</strong>, <strong>isSuccess</strong>, <strong>Message</strong>, <strong>ObjectId</strong></td><td><code>isRun__c</code>, <code>isSync__c</code>, <code>isSuccess__c</code>, <code>Message__c</code>, <code>ObjectId__c</code></td><td>Kết quả của bước <em>ghi vào DMS</em> (mục 9.3)</td></tr>
     </tbody>
   </table>
+
+  <figure class="shot" id="figE8"><div class="ev-bar"><b>Evidence E8</b><span>Org Partial · Tab D365FO_Hook → bản ghi DH-00191834 · 2026-11-03 10:21</span></div><a class="zoom" href="images/d365fo/e08-hook-masterdata-InventTable.png" target="_blank" rel="noopener"><img src="images/d365fo/e08-hook-masterdata-InventTable.png" alt="Hook Master Data: InventTable (DH-00191834)" loading="lazy" width="1440" height="900"></a><figcaption><strong>Hình E8.</strong> Hook Master Data: InventTable (DH-00191834).<span class="look"><em>Input</em> là request <code>getData</code> (<code>table</code>, <code>selectFields</code>, <code>limit</code>, bộ lọc <code>ModifiedDateTime gt</code>). <em>Output</em> là response của ERP: <code>Status</code> = Success, <code>HasMore</code> = false, <code>Data</code> rỗng nên <em>Message</em> = “Success but no new data.”</span></figcaption></figure>
 <h2 id="p1-s6" class="page-break">6. Lịch chạy (Schedule Sync)</h2><p class="fn-meta"><strong>Trong source</strong> (thư mục <code>force-app/main/default/classes/</code> nếu không ghi khác): ScheduleManagerD365.cls (refreshSchedules, buildGroups, buildCronList, scheduleGroups); Sched_MasterDataD365.cls (execute); Sched_RefreshMasterDataSchedules.cls; Sched_D365ScheduleRefresher.cls; lwc/syncScheduleRefresher. Xem job đã lập lịch: Setup → Scheduled Jobs, tên bắt đầu <code>D365Sync_</code>.</p>
 
   <h3>6.1. Lịch được tạo như thế nào</h3>
@@ -424,8 +678,10 @@
   </ol>
   <div class="callout note">
     <span class="label">Khi nào lịch được làm mới</span>
-    Lịch chỉ đổi khi <code>refreshSchedules()</code> được gọi lại. Có hai cách gọi: nút <strong>Apply Sync Schedule Configs</strong> của LWC <code>syncScheduleRefresher</code> (khối "D365 Schedule Sync Config" nằm cuối tab <em>Run Test</em>, source <code>aura/RunTestBatch/RunTestBatch.cmp</code>), hoặc job <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu000002cxltIAA" target="_blank" rel="noopener"><code>Sched_RefreshMasterDataSchedules</code></a> / <code>Sched_D365ScheduleRefresher</code> (hai class bọc gọi hàm trên, dùng để lập lịch làm mới hằng đêm). Trên Partial, tại 2026-10-22, tôi không thấy job làm mới nào đang được lập lịch, nên khi sửa <code>Schedule_Values__c</code> cần bấm nút làm mới bằng tay.
+    Lịch chỉ đổi khi <code>refreshSchedules()</code> được gọi lại. Có hai cách gọi: nút <strong>Apply Sync Schedule Configs</strong> của LWC <code>syncScheduleRefresher</code> (khối "D365 Schedule Sync Config" nằm cuối tab <em>Run Test</em>, source <code>aura/RunTestBatch/RunTestBatch.cmp</code>), hoặc job <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu000002cxltIAA" target="_blank" rel="noopener"><code>Sched_RefreshMasterDataSchedules</code></a> / <code>Sched_D365ScheduleRefresher</code> (hai class bọc gọi hàm trên, dùng để lập lịch làm mới hằng đêm). Trên Partial, kiểm tra lại ngày 2026-11-03, không có job làm mới nào đang được lập lịch, nên khi sửa <code>Schedule_Values__c</code> cần bấm nút làm mới bằng tay.
   </div>
+
+  <figure class="shot" id="figE9"><div class="ev-bar"><b>Evidence E9</b><span>Org Partial · App DLR → tab Run Test · 2026-11-03 10:21</span></div><a class="zoom" href="images/d365fo/e09-run-test-tab.png" target="_blank" rel="noopener"><img src="images/d365fo/e09-run-test-tab.png" alt="Tab Run Test: nút Apply Sync Schedule Configs" loading="lazy" width="1440" height="900"></a><figcaption><strong>Hình E9.</strong> Tab Run Test: nút Apply Sync Schedule Configs.<span class="look">Khối “D365 Schedule Sync Config” ở cuối tab. Nút <strong>Apply Sync Schedule Configs</strong> gọi <code>ScheduleManagerD365.refreshSchedules()</code>. Ảnh chỉ chụp màn hình, không bấm nút.</span></figcaption></figure>
 
   <h3>6.2. Mỗi lần job chạy làm gì</h3>
   <p><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e0XIAQ" target="_blank" rel="noopener"><code>Sched_MasterDataD365.execute()</code></a> xử lý lần lượt từng bảng thuộc nhóm của job:</p>
@@ -438,8 +694,9 @@
     <li>Insert một <code>D365FO_Hook__c</code> với <code>Is_Sched_Run__c</code> = true, từ đó kích hoạt chuỗi xử lý ở mục 3.</li>
   </ol>
 
-  <h3>6.3. Lịch hiện tại trên Partial (ảnh chụp 2026-10-22)</h3>
+  <h3>6.3. Lịch hiện tại trên Partial (đối chiếu cấu hình ngày 2026-11-03)</h3>
   <p>Giờ ở đây là giờ của Salesforce Scheduler trên org (Asia/Ho_Chi_Minh). Giá trị này thuộc về cấu hình, mỗi org (Partial, QA, PROD) có thể khác.</p>
+  <figure class="shot" id="figE1"><div class="ev-bar"><b>Evidence E1</b><span>Org Partial · Setup → Scheduled Jobs · 2026-11-03 10:16</span></div><a class="zoom" href="images/d365fo/e01-scheduled-jobs.png" target="_blank" rel="noopener"><img src="images/d365fo/e01-scheduled-jobs.png" alt="Job lập lịch D365Sync_* trên Partial" loading="lazy" width="1440" height="900"></a><figcaption><strong>Hình E1.</strong> Job lập lịch D365Sync_* trên Partial.<span class="look">Các job <code>D365Sync_&lt;Bảng&gt;_&lt;Min|Hr&gt;_&lt;giá trị&gt;</code> do <code>ScheduleManagerD365</code> tạo. Tại thời điểm chụp có <strong>56</strong> job <code>D365Sync_*</code>, cột <em>Next Scheduled Run</em> khớp lịch trong mục 6.3.</span></figcaption></figure>
   <table class="grid">
     <thead><tr><th style="width:20%">Bảng ERP</th><th style="width:21%">Object Name</th><th style="width:10%">Limit</th><th style="width:24%">Lịch</th><th>Ghi chú</th></tr></thead>
     <tbody>
@@ -449,7 +706,7 @@
       <tr><td><code>EcoResProduct</code></td><td>D365FO EcoResProduct temp</td><td class="c">100</td><td>Phút 5, 25, 45 mỗi giờ</td><td></td></tr>
       <tr><td><code>InventTable</code></td><td>D365FO Inventable temp</td><td class="c">100</td><td>Phút 8, 23, 38, 53 mỗi giờ</td><td></td></tr>
       <tr><td><code>InventItemGroupItem</code></td><td>ItemGroup</td><td class="c">100</td><td>Phút 3, 23, 43 mỗi giờ</td><td></td></tr>
-      <tr><td><code>InventSum</code></td><td>D365FO InventSum temp</td><td class="c">100</td><td>Phút 17, 32, 47, 57 mỗi giờ</td><td></td></tr>
+      <tr><td><code>InventSum</code></td><td>D365FO InventSum temp</td><td class="c">100</td><td>Phút 10, 12, 17, 32, 47, 57 mỗi giờ</td><td>Thêm phút 10 và 12 so với bản 2026-10-22</td></tr>
       <tr><td><code>InventTransferTable</code></td><td>D365FO InventTransferTable temp</td><td class="c">100</td><td>Phút 4, 12, 20, 28, 42 mỗi giờ</td><td></td></tr>
       <tr><td><code>InventTransferLine</code></td><td>D365FO InventTransferLine temp</td><td class="c">100</td><td>Phút 11, 18, 26, 35, 50 mỗi giờ</td><td></td></tr>
       <tr><td><code>IVCAMDevicetable</code></td><td>Asset</td><td class="c">45</td><td>Phút 14 mỗi giờ</td><td>Limit nhỏ vì 63 cột</td></tr>
@@ -467,12 +724,14 @@
       <tr><td><code>IVCAMDeviceModel</code></td><td>Vehicle Category</td><td class="c">100</td><td>10:00</td><td></td></tr>
       <tr><td><code>IVCAMDeviceModelCode</code></td><td>DeviceModelCode</td><td class="c">100</td><td>11:00</td><td></td></tr>
       <tr><td><code>CustTrans</code></td><td>D365FO CustTrans</td><td class="c">100</td><td>13:00</td><td></td></tr>
-      <tr><td><code>VendInvoiceJour</code></td><td>D365FO VendInvoiceJour</td><td class="c">100</td><td>14:00</td><td></td></tr>
+      <tr><td><code>VendInvoiceJour</code></td><td>D365FO VendInvoiceJour</td><td class="c">100</td><td>Phút 58, 59 mỗi giờ</td><td>Trước đây 14:00 hằng ngày</td></tr>
       <tr><td><code>PriceDiscTable</code></td><td>D365FO PriceDiscTable temp</td><td class="c">100</td><td>16:00</td><td></td></tr>
-      <tr><td><code>VendTrans</code></td><td>D365FO VendTrans</td><td class="c">100</td><td colspan="2"><code>isSync</code> = true nhưng không có lịch (<code>Schedule_Values__c</code> trống), nên chỉ chạy tay</td></tr>
-      <tr><td><code>PriceDiscAdmTable</code>, <code>PriceDiscAdmTrans</code></td><td>Price Book, Pricebook Entry</td><td class="c">100</td><td colspan="2"><code>isSync</code> = false. Hàm xử lý của hai bảng này đang bị comment trong <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023dyyIAA" target="_blank" rel="noopener"><code>Batch_MasterData_Batch</code></a>, nên không đồng bộ.</td></tr>
+      <tr><td><code>VendTrans</code></td><td>D365FO VendTrans</td><td class="c">100</td><td>Phút 16, 17 mỗi giờ</td><td>Toán tử Modified: <code>gte</code>. Trước đây chưa có lịch, chỉ chạy tay</td></tr>
+      <tr><td><code>PriceDiscAdmTable</code>, <code>PriceDiscAdmTrans</code></td><td>Price Book, Pricebook Entry</td><td class="c">100</td><td colspan="2"><code>isSync</code> = false. Chức năng đồng bộ hai bảng này hiện đang tạm ngưng trên hệ thống.</td></tr>
+      <tr><td><code>Warehouse_Inventory</code></td><td>D365FO Warehouse Inventory</td><td class="c">(trống)</td><td colspan="2"><code>isSync</code> = false. Bản ghi tên <code>Backup_Warehouse_Inventory</code>, dự phòng, không lập lịch.</td></tr>
     </tbody>
   </table>
+  <p class="fn-meta">Số liệu mục này đọc từ các bản ghi <code>MasterDataD365__mdt</code> trên Partial ngày 2026-11-03 (30 bản ghi, 56 job <code>D365Sync_*</code>). Ngoài nhóm này còn hai cặp job <code>Sched_ProcessInventSumBatch_Min_00/30</code> và <code>Sched_ProcessVendInvoiceJourBatch_Min_00/30</code> (Phụ lục C, mục C.3).</p>
   <h2 id="p1-s7">7. Lọc dữ liệu, mốc đồng bộ và phân trang (SyncFull)</h2><p class="fn-meta"><strong>Trong source</strong> (thư mục <code>force-app/main/default/classes/</code> nếu không ghi khác): CreateBodyMasterDataD365DO.cls (buildBody, createBodyResponse); Sched_MasterDataD365.cls (execute, buildTableSyncMap, runCase); Batch_MasterData_Batch.cls (trackSyncInfo, finish, extractModifiedDateTimeFilterValue).</p>
 
   <h3>7.1. Hai loại mốc</h3>
@@ -810,7 +1069,7 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
       <tr><td>Phương thức</td><td><code>POST</code></td></tr>
       <tr><td>Đường dẫn</td><td><code>https://&lt;my-domain&gt;.my.salesforce.com/services/apexrest/ApiD365FOHook</code>. Class <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023dyDIAQ" target="_blank" rel="noopener"><code>ApiD365FOHook</code></a> khai báo <code>urlMapping='/ApiD365FOHook/*'</code>.</td></tr>
       <tr><td>Header</td><td><code>Content-Type: application/json</code> và <code>Authorization: Bearer &lt;access token Salesforce&gt;</code></td></tr>
-      <tr><td>Xác thực</td><td>Token OAuth 2.0 của một user tích hợp trên Salesforce. User này phải có quyền chạy class <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023dyDIAQ" target="_blank" rel="noopener"><code>ApiD365FOHook</code></a> và quyền tạo <code>D365FO_Hook__c</code>. Cách cấp token (Connected App, user, IP) cấu hình ngoài code, cần xác nhận với DMS admin. Repository có Connected App <code>API</code> và <code>CICD_App</code>, nhưng không ghi rõ ERP đang dùng app nào.</td></tr>
+      <tr><td>Xác thực</td><td>Token OAuth 2.0 của một user tích hợp trên Salesforce. User này phải có quyền chạy class <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023dyDIAQ" target="_blank" rel="noopener"><code>ApiD365FOHook</code></a> và quyền tạo <code>D365FO_Hook__c</code>. Trên Partial, hook Inbound do user <code>D365FO.integration</code> tạo (xem <a href="#figE5">Hình E5</a>). Cách cấp token (Connected App, user, IP) cấu hình ngoài code, cần xác nhận với DMS admin. Repository có Connected App <code>API</code> và <code>CICD_App</code>, nhưng không ghi rõ ERP đang dùng app nào.</td></tr>
       <tr><td>Công tắc tắt toàn bộ</td><td>Nếu <code>D365FO_Settings__c.isRun__c</code> = false, API <strong>từ chối</strong> mọi request (xem mục 2.3). Cờ này cũng là công tắc tổng của schedule sync ở Phần 1.</td></tr>
     </tbody>
   </table>
@@ -875,14 +1134,14 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
 <tr><td><a href="#p2-fn-Sync_ResultTJ"><code>Sync_ResultTJ</code></a></td><td>Trả JournalId sau khi DMS tạo Journal</td><td>Journal ERP → Shipment DMS</td><td>Có. Chỉ ghi <code>JournalId</code></td></tr>
 <tr><td><a href="#p2-fn-SO_SyncInventory"><code>SO_SyncInventory</code></a></td><td>Đồng bộ tồn kho theo SO</td><td>Onhand ERP → Inventory DMS</td><td>Có. Chỉ update <code>QoH__c</code></td></tr>
 <tr><td><a href="#p2-fn-PO_SyncInventory"><code>PO_SyncInventory</code></a></td><td>Đồng bộ tồn kho theo PO</td><td>Onhand ERP → Inventory DMS</td><td>Có. Chỉ update <code>QoH__c</code></td></tr>
-<tr><td><a href="#p2-fn-SO_Return"><code>SO_Return</code></a></td><td>Tạo SO trả hàng</td><td>Return ERP → SO Return DMS</td><td>Không chắc. Theo mô tả là insert mới, cần xác nhận thêm</td></tr>
-<tr><td><a href="#p2-fn-Sync_InvoiceSO"><code>Sync_InvoiceSO</code></a></td><td>Invoice của SO Dropship Return</td><td>Invoice ERP → SO Return DMS</td><td>Có. Bỏ qua nếu SO đã Completed với cùng <code>InvoiceId</code></td></tr>
+<tr><td><a href="#p2-fn-SO_Return"><code>SO_Return</code></a></td><td>Tạo SO Return (SO_Return)</td><td>Return ERP → SO Return DMS</td><td>Có (nhánh Dropship). Bỏ qua nếu <code>SalesId</code> đã có SO trên DMS. Nhánh Vehicle: insert mới, chưa chống trùng</td></tr>
+<tr><td><a href="#p2-fn-Sync_InvoiceSO"><code>Sync_InvoiceSO</code></a></td><td>Invoice của SO Dropship Return</td><td>Invoice ERP → SO Return DMS</td><td>Có. SO đã Completed với cùng <code>InvoiceId</code> thì không đổi SO nhưng vẫn xử lý lại Shipment gốc. Không hủy Shipment gốc đã nhập kho</td></tr>
 <tr><td><a href="#p2-fn-Receipt_PO_Local"><code>Receipt_PO_Local</code></a></td><td>Receipt của PO Local</td><td>Receipt ERP → Shipment/PO DMS</td><td>Có. Chỉ update các field theo Id</td></tr>
 <tr><td><a href="#p2-fn-Cancel_PO_Local"><code>Cancel_PO_Local</code></a></td><td>Hủy Receipt của PO Local</td><td>Receipt ERP → Shipment DMS</td><td>Có. Báo lỗi nếu Shipment không còn ở trạng thái Completed</td></tr>
 </tbody></table>
   <p>Các function Outbound (DMS gọi sang ERP) như <code>CreateSO</code>, <code>CreateDOPart</code>, <code>PostPackingSlip</code>… không nằm trong phần này, xem <a href="#part3">Phần 3</a>.</p>
   <h2 id="p2-s5">5. Chi tiết từng function</h2>
-  <p>Cách đọc bảng mapping: <code>Field SF</code> ← <code>Key D365</code> nghĩa là field của DMS nhận giá trị từ key JSON ERP gửi. "Account theo <code>X</code>" là Account có <code>AccountNumber</code> = <code>X</code>. "Product2 theo <code>ItemId</code>" là Product2 có <code>ProductCode</code> = <code>ItemId</code>. "Hằng" là giá trị cố định trong code. Dấu ⚠ đánh dấu điểm bất thường trong code (hardcode, luồng đang tắt, bug).</p>
+  <p>Cách đọc bảng mapping: <code>Field SF</code> ← <code>Key D365</code> nghĩa là field của DMS nhận giá trị từ key JSON ERP gửi. "Account theo <code>X</code>" là Account có <code>AccountNumber</code> = <code>X</code>. "Product2 theo <code>ItemId</code>" là Product2 có <code>ProductCode</code> = <code>ItemId</code>. "Hằng" là giá trị cố định trong code.</p>
   <h3 id="p2-fn-1_IVCPurchTable_Confirm"><span class="tag">1_IVCPurchTable_Confirm</span>PO nhập khẩu (xác nhận lần đầu)</h3><p class="fn-meta">Luồng: PO ERP → PO DMS. Gửi lại cùng payload: Không. Luôn tạo mới PO, không kiểm tra trùng.</p><p><em>Chưa có request mẫu trong 200 lần gọi gần nhất trên Partial.</em></p><h4>DMS xử lý và ghi vào đâu</h4><table class="grid"><thead><tr><th>Batch class</th><th>Hướng</th><th>Luồng nghiệp vụ</th></tr></thead><tbody>
 <tr><td>Batch1IVCPurchTableConfirm</td><td>Inbound</td><td>PO ERP -&gt; PO DMS</td></tr>
 </tbody></table>
@@ -900,7 +1159,7 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
 <tr><td><code>IVC_ETA__c</code></td><td><code>ETA</code> (định dạng dd/MM/yyyy)</td></tr>
 <tr><td><code>IVC_ETD__c</code></td><td><code>ETD</code> (định dạng dd/MM/yyyy)</td></tr>
 <tr><td><code>PO_Type__c</code></td><td>Hằng 'Overseas'</td></tr>
-<tr><td><code>ERP_Purchase_Order__c</code></td><td>⚠ Hằng 'PSPO0022222'</td></tr>
+<tr><td><code>ERP_Purchase_Order__c</code></td><td>Giá trị mặc định: 'PSPO0022222'</td></tr>
 </tbody></table>
 <h4><code>Purchase_Order_Item__c</code></h4>
 <p>insert từ <code>PurchLine[]</code></p>
@@ -914,12 +1173,12 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
 <tr><td><code>Packing_Case_Number__c</code></td><td><code>CaseNameAndNo</code></td></tr>
 <tr><td><code>origin__c</code></td><td><code>OriginCountryISOcode</code></td></tr>
 <tr><td><code>D365FO_ID__c</code></td><td>= 'PO' + timestamp + '_n'</td></tr>
-<tr><td><code>Order_Part_Number__c</code></td><td>⚠ Hằng test 'Test'</td></tr>
-<tr><td><code>Product_Name__c</code></td><td>⚠ Hằng test 'FRAME'</td></tr>
-<tr><td><code>Location__c</code></td><td>⚠ Hằng test 'IMP_CL'</td></tr>
-<tr><td><code>Batch_Number__c</code></td><td>⚠ Hằng test 'L953'</td></tr>
-<tr><td><code>From_Warehouse__c</code></td><td>⚠ Hằng test 'CATLAI'</td></tr>
-<tr><td><code>Licenses_Plate__c</code></td><td>⚠ Hằng test 'H05671816'</td></tr>
+<tr><td><code>Order_Part_Number__c</code></td><td>Giá trị mặc định: 'Test'</td></tr>
+<tr><td><code>Product_Name__c</code></td><td>Giá trị mặc định: 'FRAME'</td></tr>
+<tr><td><code>Location__c</code></td><td>Giá trị mặc định: 'IMP_CL'</td></tr>
+<tr><td><code>Batch_Number__c</code></td><td>Giá trị mặc định: 'L953'</td></tr>
+<tr><td><code>From_Warehouse__c</code></td><td>Giá trị mặc định: 'CATLAI'</td></tr>
+<tr><td><code>Licenses_Plate__c</code></td><td>Giá trị mặc định: 'H05671816'</td></tr>
 </tbody></table>
 
 <h3 id="p2-fn-2_PurchTable_Confirm"><span class="tag">2_PurchTable_Confirm</span>PO nhập khẩu (xác nhận lại)</h3><p class="fn-meta">Luồng: PO ERP → PO DMS. Gửi lại cùng payload: Có. Tìm theo <code>PurchId</code>, xóa dòng cũ rồi tạo lại.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
@@ -1025,9 +1284,9 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
 <tr><td><code>ERP_Net_Amount__c</code></td><td><code>LineAmount</code></td></tr>
 <tr><td><code>Procurement_Category__c</code></td><td><code>ProcurementCategory</code></td></tr>
 <tr><td><code>TaxItemGroup__c</code></td><td><code>TaxItemGroup</code></td></tr>
-<tr><td><code>Packing_Case_Number__c</code></td><td>⚠ Hằng '12345678'</td></tr>
-<tr><td><code>origin__c</code></td><td>⚠ Hằng 'JP'</td></tr>
-<tr><td><code>Order_Part_Number__c</code></td><td>⚠ Hằng 'Test'</td></tr>
+<tr><td><code>Packing_Case_Number__c</code></td><td>Hằng '12345678'</td></tr>
+<tr><td><code>origin__c</code></td><td>Hằng 'JP'</td></tr>
+<tr><td><code>Order_Part_Number__c</code></td><td>Hằng 'Test'</td></tr>
 </tbody></table>
 
 <h3 id="p2-fn-3_InventTransfer_Shipped"><span class="tag">3_InventTransfer_Shipped</span>Transfer Order đã ship</h3><p class="fn-meta">Luồng: TO ERP → Shipment DMS. Gửi lại cùng payload: Có. Upsert theo <code>TransferId</code> và <code>InventTransId</code>.</p><p><em>Chưa có request mẫu trong 200 lần gọi gần nhất trên Partial.</em></p><h4>DMS xử lý và ghi vào đâu</h4><table class="grid"><thead><tr><th>Batch class</th><th>Hướng</th><th>Luồng nghiệp vụ</th></tr></thead><tbody>
@@ -1140,8 +1399,8 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
 <tr><td><code>ERP_Net_Amount__c</code></td><td><code>LineAmount</code></td></tr>
 <tr><td><code>Procurement_Category__c</code></td><td><code>ProcurementCategory</code></td></tr>
 <tr><td><code>Packing_Case_Number__c</code></td><td><code>InventDim_inventBatchId</code> (trống thì '12345678')</td></tr>
-<tr><td><code>origin__c</code></td><td>⚠ Hằng 'VN'</td></tr>
-<tr><td><code>Order_Part_Number__c</code></td><td>⚠ Hằng 'Test'</td></tr>
+<tr><td><code>origin__c</code></td><td>Hằng 'VN'</td></tr>
+<tr><td><code>Order_Part_Number__c</code></td><td>Hằng 'Test'</td></tr>
 </tbody></table>
 <h4>Sau khi xong (finish)</h4>
 <ul><li><code>Purchase_Order__c.Receiving_Warehouse__c</code> ← Warehouse có <code>D365FO_InventLocationId__c</code> = <code>InventLocationId__c</code></li></ul>
@@ -1207,7 +1466,6 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
 <tr><td><code>Status__c</code></td><td>Hằng 'Creation'</td></tr>
 <tr><td><code>isClaimShipment__c</code></td><td>Hằng false</td></tr>
 </tbody></table>
-<ul><li>⚠ <code>Purchase_Order__c</code> (PO có <code>PO_Number__c</code> = <code>PurchId</code>) được gán sau lệnh upsert, nên không được lưu</li></ul>
 <h4><code>Shipment_Item__c</code></h4>
 <p>tạo mới từ <code>PurchLine[]</code></p>
 <table class="grid"><thead><tr><th>Field SF</th><th>← Key D365 / giá trị</th></tr></thead><tbody>
@@ -1269,7 +1527,7 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
 <h4>Part DO</h4>
 <p>nếu đã có <code>Delivery_Order__c</code> RT Part chưa Cancelled, có <code>Sales_Order_No__c</code> hoặc <code>SalesId__c</code> = SalesId, thì chỉ update <code>Delivery_Status__c</code>='In Transit'</p>
 <h4><code>Delivery_Order__c</code></h4>
-<p>Vehicle DO): upsert theo <code>HeaderRecId__c</code> ← <code>HeaderRecId</code>. RT Dealer Vehicle DO (SO Return thì RT Return Order Vehicle</p>
+<p>Vehicle DO): upsert theo <code>HeaderRecId__c</code> ← <code>HeaderRecId</code>. RT Dealer Vehicle DO (SO Return xe thì RT Return Order Vehicle). SO Return của Dropship (Part, SO có RT SO_Dropship_Return) thì RT <strong>Part DO</strong>: kho xuất (<code>Issuing_Warehouse__c</code>) lấy theo kho của Shipment gốc chưa Cancelled (nơi hàng đã nhập, kể cả location tạm) thay vì mã kho ERP; dòng DO có <code>Delivery_Quantity__c</code> và <code>Ordered_Quantity__c</code> là <strong>số dương</strong> (ERP gửi âm, để post DO không làm tăng tồn kho) và gắn <code>Product__c</code>, <code>Ordering_Part__c</code> theo <code>ItemId</code>.</p>
 <table class="grid"><thead><tr><th>Field SF</th><th>← Key D365 / giá trị</th></tr></thead><tbody>
 <tr><td><code>Sales_Order_No__c</code></td><td>SalesId</td></tr>
 <tr><td><code>External_ID__c</code></td><td><code>PackingSlipId</code></td></tr>
@@ -1500,7 +1758,7 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
 </tbody></table>
 <h4>Sau khi xong (finish)</h4>
 <p>gắn invoice ngược lại vào chứng từ</p>
-<ul><li>SO phí vận chuyển: <code>Sales_Order__c.Invoice__c</code> ← Invoice</li><li>DropShip: <code>Shipment__c.Invoice__c</code> ← Invoice. <code>Shipment__c.Invoice_Number__c</code> ← <code>EInvoiceNum</code></li></ul>
+<ul><li>Sales_Order__c (Record Type Transportation Fee): <code>Sales_Order__c.Invoice__c</code> ← Invoice</li><li>DropShip: <code>Shipment__c.Invoice__c</code> ← Invoice. <code>Shipment__c.Invoice_Number__c</code> ← <code>EInvoiceNum</code></li></ul>
 <ul><li>DO (Part và Vehicle): <code>Invoice__c</code> ← Invoice.</li></ul>
 <table class="grid"><thead><tr><th>Field SF</th><th>← Key D365 / giá trị</th></tr></thead><tbody>
 <tr><td><code>ERP_Invoice_No__c</code></td><td><code>EInvoiceNum</code></td></tr>
@@ -1517,7 +1775,7 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
 <p>tìm theo cặp <code>Warehouse__c</code> + <code>Product__c</code>, chưa có thì insert</p>
 <h4><code>Location_Inventory__c</code></h4>
 <p>upsert theo <code>VoucherPhysical__c</code> ← <code>VoucherPhysical</code></p>
-<ul><li>Lookup: <code>Warehouse_Inventory__c</code>, <code>Vehicle__c</code>, <code>Product__c</code>, <code>Warehouse__c</code>, <code>Warehouse_Location__c</code></li><li>⚠ <code>Warehouse_Inventory__c</code> bị null nếu WI vừa mới tạo</li></ul>
+<ul><li>Lookup: <code>Warehouse_Inventory__c</code>, <code>Vehicle__c</code>, <code>Product__c</code>, <code>Warehouse__c</code>, <code>Warehouse_Location__c</code></li></ul>
 <table class="grid"><thead><tr><th>Field SF</th><th>← Key D365 / giá trị</th></tr></thead><tbody>
 <tr><td><code>QoH__c</code></td><td><code>Qty</code></td></tr>
 <tr><td><code>Item_number__c</code></td><td><code>ItemId</code></td></tr>
@@ -1534,7 +1792,6 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
 <tr><td><code>StatusReceipt__c</code></td><td><code>StatusReceipt</code></td></tr>
 <tr><td><code>StatusIssue__c</code></td><td><code>StatusIssue</code></td></tr>
 </tbody></table>
-<ul><li>⚠ <code>InventDimId</code> không được map vào <code>InventDimId__c</code>, trong khi #18 và #19 tìm record theo field này</li></ul>
 
 <h3 id="p2-fn-Sync_ResultSO"><span class="tag">Sync_ResultSO</span>Trả SalesId sau khi DMS tạo SO</h3><p class="fn-meta">Luồng: SO ERP → SO/DO DMS. Gửi lại cùng payload: Có. Chỉ ghi <code>SalesId</code>.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
   &quot;function_name&quot;: &quot;Sync_ResultSO&quot;,
@@ -1653,7 +1910,7 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
 <p>chỉ update, không tạo mới. Tìm theo <code>InventDimId__c</code> = <code>PurchLine[].InventDim_InventDimId</code></p>
 <ul><li><code>QoH__c</code> ← <code>AvailPhysical</code> (null tính là 0)</li></ul>
 
-<h3 id="p2-fn-SO_Return"><span class="tag">SO_Return</span>Tạo SO trả hàng</h3><p class="fn-meta">Luồng: Return ERP → SO Return DMS. Gửi lại cùng payload: Không chắc. Theo mô tả là insert mới, cần xác nhận thêm.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
+<h3 id="p2-fn-SO_Return"><span class="tag">SO_Return</span>Tạo SO Return (SO_Return)</h3><p class="fn-meta">Luồng: Return ERP → SO Return DMS. Gửi lại cùng payload: có với nhánh SO Dropship (bỏ qua nếu <code>SalesId</code> đã có trên DMS); nhánh Vehicle chưa chống trùng.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
   &quot;function_name&quot;: &quot;SO_Return&quot;,
   &quot;data&quot;: {
     &quot;SO_Type&quot;: &quot;SO_Return&quot;,
@@ -1703,10 +1960,15 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
 }</code></pre><p class="fn-meta">Kết quả DMS ghi lại ở lần gọi này: <code>isSuccess__c</code> = true, <code>Message__c</code> = Success: Created Sales_Order__c a1eWC000002ZXZRYA4</p><h4>DMS xử lý và ghi vào đâu</h4><table class="grid"><thead><tr><th>Batch class</th><th>Hướng</th><th>Luồng nghiệp vụ</th></tr></thead><tbody>
 <tr><td>Batch_SF_CreateSOReturn</td><td>Inbound</td><td>Return ERP -&gt; SO Return DMS</td></tr>
 </tbody></table>
-<h4>Tìm SO gốc</h4>
-<p><code>Sales_Order__c</code> có <code>SalesId__c</code> = <code>SalesId_Orig</code>. Bỏ qua nếu không có SO gốc hoặc SO gốc là SO Part</p>
+<h4>Tìm SO gốc và chọn nhánh</h4>
+<p><code>Sales_Order__c</code> có <code>SalesId__c</code> = <code>SalesId_Orig</code>. Bỏ qua (hook vẫn thành công, ghi "Skipped") nếu không có SO gốc. Báo lỗi nếu khớp nhiều hơn một SO.</p>
+<table class="grid"><thead><tr><th style="width:26%">SO gốc</th><th>Xử lý</th></tr></thead><tbody>
+<tr><td>Sales_Order__c (Record Type Vehicle - không chứa "Part")</td><td>Tạo SO Return Record Type <code>Return Order Vehicle</code>; item map <code>Vehicle__c</code> theo VIN (<code>InventDimension1</code>).</td></tr>
+<tr><td>SO Part có <code>SO_Type__c</code> chứa "Dropship"</td><td>Tạo SO Return Record Type <code>SO Dropship Return</code>, <code>Status__c</code> = <code>Open</code>; item map <code>Product__c</code> theo <code>Product2.ProductCode</code> = <code>ItemId</code>. Chống trùng: nếu đã có SO cùng <code>SalesId</code> thì bỏ qua.</td></tr>
+<tr><td>SO Part khác</td><td>Bỏ qua (ghi "Skipped").</td></tr>
+</tbody></table>
 <h4><code>Sales_Order__c</code></h4>
-<p>insert mới, RT Return Order Vehicle</p>
+<p>insert mới, Record Type theo bảng trên</p>
 <table class="grid"><thead><tr><th>Field SF</th><th>← Key D365 / giá trị</th></tr></thead><tbody>
 <tr><td><code>SalesId__c</code></td><td><code>SalesId</code></td></tr>
 <tr><td><code>HeaderRecId__c</code></td><td><code>HeaderRecId</code></td></tr>
@@ -1714,36 +1976,58 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
 <tr><td><code>Customer_reference__c</code></td><td><code>CustomerRef</code></td></tr>
 <tr><td><code>Sales_Order_Ref__c</code></td><td>SO gốc</td></tr>
 <tr><td><code>Account__c</code></td><td>Account theo <code>CustAccount</code> (không có thì lấy Account của SO gốc)</td></tr>
+<tr><td><code>Status__c</code>, <code>SO_Type__c</code>, <code>Purchase_Order__c</code></td><td>Chỉ nhánh Dropship: <code>Open</code>; kế thừa loại SO và PO từ SO gốc</td></tr>
 </tbody></table>
 <h4><code>Sales_Order_Item__c</code></h4>
-<p>insert từ <code>SalesLine[]</code></p>
+<p>insert từ <code>SalesLine[]</code> (nhánh Dropship dùng Record Type item <code>Part_Sale_Order_Item</code>)</p>
 <table class="grid"><thead><tr><th>Field SF</th><th>← Key D365 / giá trị</th></tr></thead><tbody>
 <tr><td><code>LineRecId__c</code></td><td><code>LineRecId</code></td></tr>
 <tr><td><code>ItemId__c</code></td><td><code>ItemId</code></td></tr>
-<tr><td><code>Quantity__c</code></td><td><code>SalesQty</code></td></tr>
+<tr><td><code>Quantity__c</code></td><td><code>SalesQty</code> (SO Return Dropship: số âm theo ERP)</td></tr>
 <tr><td><code>Unit_Price__c</code></td><td><code>SalesPrice</code></td></tr>
-<tr><td><code>Vehicle__c</code></td><td>Vehicle có <code>Name</code> = <code>InventDimension1</code></td></tr>
+<tr><td><code>Vehicle__c</code></td><td>Sales_Order__c Vehicle: Vehicle có <code>Name</code> = <code>InventDimension1</code></td></tr>
+<tr><td><code>Product__c</code></td><td>SO Dropship: Product có <code>ProductCode</code> = <code>ItemId</code></td></tr>
 </tbody></table>
+<h4>Bước tiếp theo của SO Return Dropship trên DMS</h4>
+<ul>
+<li>ERP gửi tiếp <code>8_PostPacking</code> (<code>SO_Type</code> = <code>SO_Return</code>): DMS tạo <strong>Return DO</strong> với Record Type <code>DO Return Dropship</code> (không còn dùng <em>Dealer Parts DO</em>). Kho xuất = kho của Shipment gốc (kể cả đã Cancelled), kho nhận = kho IVC của SO gốc, số lượng dòng đổi sang số dương. DO này <strong>không sync ERP</strong> (không tạo hook <code>CreateDOPart</code>) và <strong>không tạo Shipment nhập kho</strong>.</li>
+<li>Đại lý bấm <strong>Auto-complete DO</strong> (hoặc đi từng bước Picking, Packing, Good Issue): DMS trừ tồn kho location đã lấy hàng; SO Return tự <code>Completed</code> khi DO đạt Good Issue / Invoiced / Delivered.</li>
+<li>Từ SO Return Completed, nút <strong>Create Offset SO</strong> tạo Offset Sales Order (Create Offset SO) ở trạng thái <code>Draft</code> (Warehouse, ERP Default Dimension, đơn giá theo SO gốc, <code>Original_Shipment__c</code> = Shipment gốc); bấm <strong>Open</strong> thì SO mới được tạo ở ERP.</li>
+</ul>
   <h3 id="p2-fn-Sync_InvoiceSO"><span class="tag">Sync_InvoiceSO</span>Invoice của SO Dropship Return</h3>
-<p class="fn-meta">Luồng: Invoice ERP → SO Return DMS. Gửi lại cùng payload: có, DMS bỏ qua nếu SO đã Completed với cùng <code>InvoiceId</code>.</p>
-<h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
+<p class="fn-meta">Luồng: Invoice ERP → SO Return DMS. Gửi lại cùng payload: có. Nếu SO đã Completed với cùng <code>InvoiceId</code>, DMS <strong>không đổi SO</strong> nhưng <strong>vẫn xử lý lại Shipment gốc / Return DO</strong> (các bước đều lặp lại an toàn), nên lần gửi lặp có thể bù phần gắn Shipment gốc mà lần trước chưa làm được. <code>Message__c</code> bắt đầu bằng "Skipped: …".</p>
+<h4>Request mẫu (lấy từ một lần gọi thật trên Partial, hook DH-00188672)</h4><pre><code>{
   &quot;function_name&quot;: &quot;Sync_InvoiceSO&quot;,
   &quot;data&quot;: {
-    &quot;HeaderRecId&quot;: &quot;5637392832&quot;,
+    &quot;HeaderRecId&quot;: &quot;5637393585&quot;,
     &quot;SO_Type&quot;: &quot;SO_Return&quot;,
-    &quot;SalesId&quot;: &quot;ARSO0034755&quot;,
-    &quot;InvoiceId&quot;: &quot;ARCN0000196&quot;
+    &quot;SalesId&quot;: &quot;ARSO0034766&quot;,
+    &quot;InvoiceId&quot;: &quot;ARCN0000197&quot;,
+    &quot;InvoiceId_Orig&quot;: &quot;ARIN0066191&quot;
   }
-}</code></pre><p class="fn-meta">Kết quả DMS ghi lại ở lần gọi này: <code>isSuccess__c</code> = true, <code>Message__c</code> = Success: Completed Sales_Order__c a1eWC000002ZXZRYA4</p>
+}</code></pre><p class="fn-meta"><code>InvoiceId</code> là số hóa đơn của SO Return, <code>InvoiceId_Orig</code> là số hóa đơn của Shipment/SO gốc đang bị trả hàng.</p>
 <h4>DMS xử lý và ghi vào đâu</h4>
 <p>Hook dùng chung cho nhiều loại SO, rẽ nhánh theo <code>data.SO_Type</code>:</p>
 <table class="grid"><thead><tr><th style="width:22%"><code>SO_Type</code></th><th>Xử lý</th></tr></thead><tbody>
-<tr><td><code>DropShip_RT</code></td><td>Tìm <code>Sales_Order__c</code> theo <code>SalesId__c</code> = <code>SalesId</code>. Phải là Record Type <code>SO_Dropship_Return</code>. Ghi <code>Invoice_Number__c</code> ← <code>InvoiceId</code> và đổi <code>Status__c</code> = <code>Completed</code>.</td></tr>
+<tr><td><code>DropShip_RT</code></td><td>Tìm <code>Sales_Order__c</code> theo <code>SalesId__c</code> = <code>SalesId</code>. Phải là Record Type <code>SO_Dropship_Return</code>. Ghi <code>Invoice_Number__c</code> ← <code>InvoiceId</code> và đổi <code>Status__c</code> = <code>Completed</code>, rồi xử lý Shipment gốc (bảng bên dưới).</td></tr>
 <tr><td><code>SO_Return</code></td><td>Giống <code>DropShip_RT</code> nhưng không ràng buộc Record Type (dùng khi user tạo SO return mà quên bật loại Dropship).</td></tr>
 <tr><td><code>DropShip</code></td><td>Chưa xử lý. DMS đánh dấu thành công kèm thông báo "Skipped".</td></tr>
 <tr><td>Giá trị khác</td><td>Bỏ qua, đánh dấu thành công kèm thông báo "Skipped: SO_Type … không được hỗ trợ".</td></tr>
 </tbody></table>
-<ul><li>Báo lỗi nếu <code>SalesId</code> hoặc <code>InvoiceId</code> trống, nếu không tìm thấy SO, hoặc nếu <code>SalesId</code> khớp nhiều hơn một SO.</li></ul>
+<h4>Xử lý Shipment gốc theo <code>InvoiceId_Orig</code></h4>
+<p>Mục đích của <code>InvoiceId_Orig</code> là tìm Shipment gốc của đơn return để đánh dấu Return DO này là return của Shipment nào. DMS tìm các <code>Shipment__c</code> có <code>Invoice__r.JournalId__c</code> = <code>InvoiceId_Orig</code> (và thuộc cùng SO gốc của SO Return), rồi xử lý theo việc Shipment đã nhập kho hay chưa:</p>
+<table class="grid"><thead><tr><th style="width:30%">Shipment gốc</th><th>DMS làm gì</th></tr></thead><tbody>
+<tr><td><strong>Đã nhập kho</strong>: <code>Status__c</code> = <code>Completed</code>, <strong>hoặc</strong> có GR (Parts Receipt Note) <code>Completed</code> (hàng đã nằm ở location tạm của Đại lý)</td><td><strong>KHÔNG hủy.</strong> Chỉ gắn hai chiều: <code>Delivery_Order__c.Original_Shipment__c</code> ← Shipment gốc (trên Return DO của SO Return) và <code>Shipment__c.Return_Delivery_Order__c</code> ← Return DO. SO Return trỏ về Shipment này qua <code>Sales_Order__c.Original_Shipment__c</code>.</td></tr>
+<tr><td><strong>Chưa nhập kho</strong>: chưa Completed và chưa có GR Completed</td><td>Đổi <code>Status__c</code> = <code>Cancelled</code>.</td></tr>
+<tr><td>Đã <code>Cancelled</code></td><td>Giữ nguyên.</td></tr>
+<tr><td>Không có <code>InvoiceId_Orig</code>, hoặc không tìm thấy Shipment</td><td>SO Return vẫn <code>Completed</code>, không đổi Shipment nào. Lý do ghi trong <code>Message__c</code>.</td></tr>
+</tbody></table>
+<ul>
+<li>Chưa có Return DO tại thời điểm hook đến (ERP chưa gửi <code>8_PostPacking</code> của đơn return): DMS vẫn hoàn tất SO Return và ghi chú "Chưa có Return DO để gắn SM gốc".</li>
+<li>Hoàn tất SO Return và xử lý Shipment chạy trong một giao dịch: lỗi ở bước nào thì hoàn tác cả hai và hook báo lỗi.</li>
+<li>Báo lỗi nếu <code>SalesId</code> hoặc <code>InvoiceId</code> trống, nếu không tìm thấy SO, hoặc nếu <code>SalesId</code> khớp nhiều hơn một SO.</li>
+</ul>
+<p class="fn-meta">Kết quả DMS ghi lại khi chạy lại trên Partial (hook DH-00188702, ngày 30/10/2026, Shipment gốc SM-000378 đã nhập kho): <code>isSuccess__c</code> = true, <code>Message__c</code> = Success: Completed Sales_Order__c … Giữ nguyên Shipment đã nhập kho: SM-000378. Gắn Return DO DO-20261030-2160 &lt;-&gt; SM gốc.</p>
 
 <h3 id="p2-fn-Receipt_PO_Local"><span class="tag">Receipt_PO_Local</span>Receipt của PO Local</h3>
 <p class="fn-meta">Luồng: Receipt ERP → Shipment/PO DMS. Gửi lại cùng payload: có, vì chỉ update theo Id.</p>
@@ -1809,8 +2093,8 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
     <tbody>
       <tr><td><code>8_PostPacking</code></td><td><code>Sales_Order__c</code> có <code>SalesId__c</code> = <code>SalesId</code>; với DO Part: DO có <code>SalesId__c</code></td><td>Webhook <code>Sync_ResultSO</code> (ERP trả SalesId sau khi DMS gọi <code>CreateSO</code> / <code>CreateDOPart</code>)</td></tr>
       <tr><td><code>8a_CancelDelivered</code></td><td>DO / Shipment tạo bởi <code>8_PostPacking</code> (khớp <code>PackingSlipId</code>)</td><td><code>8_PostPacking</code></td></tr>
-      <tr><td><code>9_PostInvoice</code></td><td>DO (theo <code>SalesId</code>), hoặc SO phí vận chuyển, hoặc Shipment Dropship</td><td><code>8_PostPacking</code> hoặc <code>Sync_ResultSO</code></td></tr>
-      <tr><td><code>Sync_InvoiceSO</code></td><td><code>Sales_Order__c</code> có <code>SalesId__c</code> = <code>SalesId</code></td><td><code>SO_Return</code></td></tr>
+      <tr><td><code>9_PostInvoice</code></td><td>DO (theo <code>SalesId</code>), hoặc Sales_Order__c Record Type Transportation Fee, hoặc Shipment Dropship</td><td><code>8_PostPacking</code> hoặc <code>Sync_ResultSO</code></td></tr>
+      <tr><td><code>Sync_InvoiceSO</code></td><td><code>Sales_Order__c</code> có <code>SalesId__c</code> = <code>SalesId</code>; Shipment gốc có <code>Invoice__r.JournalId__c</code> = <code>InvoiceId_Orig</code></td><td><code>SO_Return</code>, <code>8_PostPacking</code> (Return DO), <code>9_PostInvoice</code> (gắn Invoice vào Shipment)</td></tr>
       <tr><td><code>SO_SyncInventory</code>, <code>PO_SyncInventory</code></td><td><code>Location_Inventory__c</code> có <code>InventDimId__c</code> khớp. Hai function này <strong>chỉ update, không tạo mới</strong></td><td>Đồng bộ master data <code>InventSum</code> (Phần 1)</td></tr>
       <tr><td><code>Receipt_PO_Local</code>, <code>Cancel_PO_Local</code></td><td><code>Shipment__c</code> (Id Salesforce, tương ứng <code>IVC_DMS_ID_Shipment</code> trong payload Registration) và <code>Shipment_Item__c</code> (Id Salesforce)</td><td>Luồng Outbound <code>ERP_RegistrationPO_Loc</code></td></tr>
       <tr><td>Hầu hết function có <code>ItemId</code></td><td><code>Product2</code> có <code>ProductCode</code> = <code>ItemId</code></td><td>Đồng bộ master data <code>InventTable</code> / <code>EcoResProduct</code> (Phần 1)</td></tr>
@@ -1830,6 +2114,8 @@ Kết quả ghi lại ngay trên D365FO_Hook__c:  isRun__c, isSuccess__c, Messag
       <tr><td><code>ObjectId__c</code></td><td>Id của object chính vừa tạo hoặc cập nhật (nếu function có ghi).</td></tr>
     </tbody>
   </table>
+
+  <figure class="shot" id="figE5"><div class="ev-bar"><b>Evidence E5</b><span>Org Partial · Tab D365FO_Hook → bản ghi DH-00191252 · 2026-11-03 10:20</span></div><a class="zoom" href="images/d365fo/e05-hook-inbound-8_PostPacking.png" target="_blank" rel="noopener"><img src="images/d365fo/e05-hook-inbound-8_PostPacking.png" alt="Hook Inbound thành công: 8_PostPacking (DH-00191252)" loading="lazy" width="1440" height="900"></a><figcaption><strong>Hình E5.</strong> Hook Inbound thành công: 8_PostPacking (DH-00191252).<span class="look"><em>Function</em> luôn là <code>ApiD365FOHook</code>; tên function thật (<code>8_PostPacking</code>) nằm trong <em>Input</em>. <em>isRun</em> và <em>isSuccess</em> đều tick, <em>Message</em> = Success. <em>Owner</em> là user tích hợp <code>D365FO.integration</code>.</span></figcaption></figure>
 
   <h3>7.2. Truy vấn tra cứu (dành cho DMS admin)</h3>
 <pre><code>-- Các webhook gần nhất và kết quả
@@ -1860,6 +2146,8 @@ ORDER BY CreatedDate DESC LIMIT 50</code></pre>
       <tr><td>Dữ liệu bị tạo trùng sau khi ERP retry</td><td>Function không an toàn khi gửi lại (<code>1_IVCPurchTable_Confirm</code>, <code>7_PurchTable_Quantity</code>, có thể <code>SO_Return</code>). ERP không nên tự động retry các function này.</td></tr>
     </tbody>
   </table>
+  <figure class="shot" id="figE6"><div class="ev-bar"><b>Evidence E6</b><span>Org Partial · Tab D365FO_Hook → bản ghi DH-00191150 · 2026-11-03 10:20</span></div><a class="zoom" href="images/d365fo/e06-hook-inbound-loi.png" target="_blank" rel="noopener"><img src="images/d365fo/e06-hook-inbound-loi.png" alt="Hook Inbound lỗi: Cancel_PO_Local (DH-00191150)" loading="lazy" width="1440" height="900"></a><figcaption><strong>Hình E6.</strong> Hook Inbound lỗi: Cancel_PO_Local (DH-00191150).<span class="look"><em>isRun</em> tick nhưng <em>isSuccess</em> trống, <em>Message</em> = “Error: data thiếu ReceiptId hoặc ShipmentId”. Trong <em>Input</em>, <code>ShipmentId</code> bị gửi rỗng. ERP đọc <em>Message</em> để biết cần sửa gì.</span></figcaption></figure>
+
   <h2 id="p2-s8">8. Checklist dành cho ERP developer</h2>
   <ol>
     <li>Gọi đúng <code>POST /services/apexrest/ApiD365FOHook</code> với Bearer token Salesforce còn hạn.</li>
@@ -1916,24 +2204,24 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
     </tbody>
   </table>
 
-  <h2 id="p3-s3">3. Danh sách function Outbound</h2>
+  <h2 id="p3-s3">3. Danh sách và chi tiết function Outbound</h2>
   <table class="grid"><thead><tr><th style="width:22%"><code>Function__c</code></th><th style="width:30%">Endpoint ERP (sau <code>Service_URL__c</code>)</th><th style="width:30%">DMS gửi khi</th><th>Đang chạy</th></tr></thead><tbody>
 <tr><td><a href="#p3-fn-CreateSO"><code>CreateSO</code></a></td><td><code>OMN1_ServiceAPI_CreateOrder/createSalesOrder</code></td><td>Sales Order chuyển sang <code>Open</code></td><td>Có</td></tr>
-<tr><td><a href="#p3-fn-CreateDOPart"><code>CreateDOPart</code></a></td><td><code>OMN1_ServiceAPI_CreateOrder/createSalesOrder (dùng chung)</code></td><td>Inventory Transaction của DO Part chuyển <code>Completed</code></td><td>Có</td></tr>
+<tr><td><a href="#p3-fn-CreateDOPart"><code>CreateDOPart</code></a></td><td><code>OMN1_ServiceAPI_CreateOrder/createSalesOrder (dùng chung)</code></td><td>Inventory Transaction của DO Part chuyển <code>Completed</code> (trừ DO có <code>Sales_Order__r.Claim__c != null</code>)</td><td>Có</td></tr>
+<tr><td><a href="#p3-fn-CreateDOPart_Claim"><code>CreateDOPart_Claim</code></a></td><td><code>Chưa cấu hình (chờ nối API)</code></td><td>Inventory Transaction của DO Part chuyển <code>Completed</code> có <code>Sales_Order__r.Claim__c != null</code> (#6102)</td><td><strong>Tạo hook chờ nối API</strong></td></tr>
 <tr><td><a href="#p3-fn-PostPackingSlip"><code>PostPackingSlip</code></a></td><td><code>OMN1_ServicePackingSlip/postPackingSlip</code></td><td>DO Part / POSM / Accessory chuyển <code>In Transit</code></td><td>Có</td></tr>
 <tr><td><a href="#p3-fn-ERP_SOCancelled"><code>ERP_SOCancelled</code></a></td><td><code>OMN1_ServiceCancelSO/cancelSO</code></td><td>SO Part chuyển <code>Cancelled</code></td><td>Có (chưa thấy hook nào trên Partial)</td></tr>
-<tr><td><a href="#p3-fn-createPurchaseOrder"><code>createPurchaseOrder</code></a></td><td><code>OMN1_ServiceAPI_CreatePO/createPurchaseOrder</code></td><td>SO Support SPV / FLS Support / Service chuyển <code>Accepted</code></td><td>Có</td></tr>
+<tr><td><a href="#p3-fn-createPurchaseOrder"><code>createPurchaseOrder</code></a></td><td><code>OMN1_ServiceAPI_CreatePO/createPurchaseOrder</code></td><td><code>Sales_Order__c</code> (Record Type Support SPV, FLS Support, Service chuyển <code>Accepted</code>; CRS Claim chuyển <code>Open</code> [#6411]; AFS Claim chuyển <code>Sync ERP</code> [#6376])</td><td>Có</td></tr>
 <tr><td><a href="#p3-fn-ERP_ShipmentCompleted"><code>ERP_ShipmentCompleted</code></a></td><td><code>OMN1_ServiceAPI_BinningSlip/createInventJournal</code></td><td>Shipment chuyển <code>Completed</code> và có Binning Slip History</td><td>Có</td></tr>
 <tr><td><a href="#p3-fn-ERP_RegistrationPO_Loc"><code>ERP_RegistrationPO_Loc</code></a></td><td><code>OMN1_ServiceAPI_RegistrationPO/createRegistrationPO_Loc</code></td><td>Shipment của PO Local chuyển <code>Completed</code></td><td>Có</td></tr>
 <tr><td><a href="#p3-fn-CreateTOVehicle"><code>CreateTOVehicle</code></a></td><td><code>OMN1_ServiceAPI_CreateTransferOrder/createTransferOrder</code></td><td>Transfer Order (PO Dealer Display Vehicle) chuyển <code>Approved</code></td><td>Có</td></tr>
 <tr><td><a href="#p3-fn-CreateTOPart"><code>CreateTOPart</code></a></td><td><code>OMN1_ServiceAPI_CreateTransferOrder/createTransferOrder (dùng chung)</code></td><td>DO Part có Transfer Order chuyển <code>In Transit</code></td><td>Có (chưa thấy hook nào trên Partial)</td></tr>
 <tr><td><a href="#p3-fn-4_SF_InventoryTransaction_Completed"><code>4_SF_InventoryTransaction_Completed</code></a></td><td><code>OMN1_ServiceAPI_InventoryTransaction/receiveTransfer</code></td><td>Inventory Transaction chuyển <code>Completed</code></td><td><strong>Tắt</strong></td></tr>
-<tr><td><a href="#p3-fn-5_SF_BinningSlip_Completed"><code>5_SF_BinningSlip_Completed</code></a></td><td><code>OMN1_ServiceAPI_BinningSlip/process</code></td><td>Binning Slip chuyển <code>Completed</code></td><td><strong>Tắt</strong></td></tr>
+<tr><td><a href="#p3-fn-5_SF_BinningSlip_Completed"><code>5_SF_BinningSlip_Completed</code></a></td><td><code>OMN1_ServiceAPI_BinningSlip/process</code></td><td>Binning Slip chuyển <code>Completed</code> (code trigger từng đặt tên <code>ERP_BinningSlipCompleted</code>)</td><td><strong>Tắt</strong></td></tr>
 </tbody></table>
 
-  <h2 id="p3-s4" class="page-break">4. Nhóm Sales Order và Delivery Order</h2>
-  <p>Cách đọc bảng mapping: <code>Key payload</code> ← <code>Field DMS</code> nghĩa là key trong JSON gửi sang ERP lấy giá trị từ field của DMS. "Hằng" là giá trị cố định trong code. Dấu ⚠ đánh dấu điểm bất thường trong code (hardcode, luồng đang tắt, lỗi).</p>
-  <h3 id="p3-fn-CreateSO"><span class="tag">CreateSO</span>Tạo Sales Order bên ERP</h3><p class="fn-meta">Luồng: SO DMS → SO ERP.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
+  <p>Cách đọc bảng mapping: <code>Key payload</code> ← <code>Field DMS</code> nghĩa là key trong JSON gửi sang ERP lấy giá trị từ field của DMS. "Hằng" là giá trị cố định trong code.</p>
+  <h3 id="p3-fn-CreateSO"><span class="tag">3.1</span><span class="tag">CreateSO</span>Tạo Sales Order bên ERP</h3><p class="fn-meta">Luồng: SO DMS → SO ERP.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
   &quot;_request&quot;: {
     &quot;InclTax&quot;: &quot;1&quot;,
     &quot;Lines&quot;: [
@@ -1972,6 +2260,7 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 }</code></pre><table class="grid"><thead><tr><th>Batch class</th><th>Hướng</th><th>Luồng nghiệp vụ</th></tr></thead><tbody>
 <tr><td>Batch12_SF_CreateSO</td><td>Outbound</td><td>SO DMS -&gt; SO ERP</td></tr>
 </tbody></table>
+  <figure class="shot" id="figE7"><div class="ev-bar"><b>Evidence E7</b><span>Org Partial · Tab D365FO_Hook → bản ghi DH-00191824 · 2026-11-03 10:21</span></div><a class="zoom" href="images/d365fo/e07-hook-outbound-CreateSO.png" target="_blank" rel="noopener"><img src="images/d365fo/e07-hook-outbound-CreateSO.png" alt="Hook Outbound: CreateSO (DH-00191824)" loading="lazy" width="1440" height="900"></a><figcaption><strong>Hình E7.</strong> Hook Outbound: CreateSO (DH-00191824).<span class="look"><em>Function</em> = <code>CreateSO</code>, <em>Input</em> là payload <code>_request</code> gửi sang ERP, <em>ObjectId</em> trỏ tới Sales Order. <em>Message</em> = “Successfully inserted data into the temp table. Lines=1” là phản hồi của ERP.</span></figcaption></figure>
 <h4>Khi nào gửi</h4>
 <p><code>Sales_Order__c</code> đổi <code>Status__c</code> sang 'Open'</p>
 <ul><li>RT: Vehicle DLR to CST, Sales, Transportation Fee hoặc Part Sales Order</li><li>Phải có ít nhất 1 SOI. Chia tối đa 100 line mỗi request</li></ul>
@@ -1981,11 +2270,11 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <p><code>_request.*</code></p>
 <table class="grid"><thead><tr><th>Key payload gửi D365</th><th>← Field SF / giá trị</th></tr></thead><tbody>
 <tr><td><code>CustAccount</code></td><td><code>Sales_Order__c.Account__r.AccountNumber</code></td></tr>
-<tr><td><code>CustomerRef</code></td><td><code>Customer_reference__c</code> (trống thì lấy <code>Contract__r.ContractNumber</code>)</td></tr>
-<tr><td><code>DefaultDimension</code></td><td><code>ERP_Default_Dimension__c</code></td></tr>
-<tr><td><code>SO_Type</code></td><td><code>SO_Type__c</code></td></tr>
+<tr><td><code>CustomerRef</code></td><td><code>Sales_Order__c.Customer_reference__c</code> (trống thì lấy <code>Sales_Order__c.Contract__r.ContractNumber</code>)</td></tr>
+<tr><td><code>DefaultDimension</code></td><td><code>Sales_Order__c.ERP_Default_Dimension__c</code></td></tr>
+<tr><td><code>SO_Type</code></td><td><code>Sales_Order__c.SO_Type__c</code></td></tr>
 <tr><td><code>IVC_DMS_ID</code></td><td><code>Sales_Order__c.Id</code></td></tr>
-<tr><td><code>TotalLine</code></td><td>= tổng số SOI</td></tr>
+<tr><td><code>TotalLine</code></td><td>= tổng số dòng <code>Sales_Order_Item__c</code></td></tr>
 <tr><td><code>CurrencyCodex</code></td><td>Hằng 'VND'</td></tr>
 <tr><td><code>DlvMode</code></td><td>Hằng 'OTH'</td></tr>
 <tr><td><code>SalesPoolId</code></td><td>Hằng 'OTH'</td></tr>
@@ -1997,17 +2286,17 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <h4>Payload <code>_request.Lines[]</code></h4>
 <p>từ <code>Sales_Order_Item__c</code></p>
 <table class="grid"><thead><tr><th>Key payload gửi D365</th><th>← Field SF / giá trị</th></tr></thead><tbody>
-<tr><td><code>ItemId</code></td><td><code>Product__r.D365FO_ItemId__c</code> (SO phí vận chuyển dùng <code>Product__r.ProductCode</code>)</td></tr>
-<tr><td><code>Qty</code></td><td><code>Quantity__c</code></td></tr>
-<tr><td><code>SalesPrice</code></td><td><code>Unit_Price__c</code></td></tr>
-<tr><td><code>SalesUnit</code></td><td><code>Product__r.Unit_of_Measure_by_Sale__r.Symbol__c</code></td></tr>
-<tr><td><code>LineAmount</code></td><td>= <code>Amount__c</code> (hoặc <code>Unit_Price__c</code> × <code>Quantity__c</code>) trừ chiết khấu theo <code>Discount__c</code> (%) hoặc <code>Discount_Amount__c</code></td></tr>
-<tr><td><code>LineDisc</code></td><td><code>Discount_Amount__c</code></td></tr>
-<tr><td><code>LinePercent</code></td><td><code>Discount__c</code></td></tr>
-<tr><td><code>InventColorId</code></td><td><code>Product__r.D365FO_Color__c</code></td></tr>
+<tr><td><code>ItemId</code></td><td><code>Sales_Order_Item__c.Product__r.D365FO_ItemId__c</code> (Sales_Order__c Record Type Transportation Fee dùng <code>Sales_Order_Item__c.Product__r.ProductCode</code>)</td></tr>
+<tr><td><code>Qty</code></td><td><code>Sales_Order_Item__c.Quantity__c</code></td></tr>
+<tr><td><code>SalesPrice</code></td><td><code>Sales_Order_Item__c.Unit_Price__c</code></td></tr>
+<tr><td><code>SalesUnit</code></td><td><code>Sales_Order_Item__c.Product__r.Unit_of_Measure_by_Sale__r.Symbol__c</code></td></tr>
+<tr><td><code>LineAmount</code></td><td>= <code>Sales_Order_Item__c.Amount__c</code> (hoặc <code>Sales_Order_Item__c.Unit_Price__c</code> × <code>Sales_Order_Item__c.Quantity__c</code>) trừ chiết khấu theo <code>Sales_Order_Item__c.Discount__c</code> (%) hoặc <code>Sales_Order_Item__c.Discount_Amount__c</code></td></tr>
+<tr><td><code>LineDisc</code></td><td><code>Sales_Order_Item__c.Discount_Amount__c</code></td></tr>
+<tr><td><code>LinePercent</code></td><td><code>Sales_Order_Item__c.Discount__c</code></td></tr>
+<tr><td><code>InventColorId</code></td><td><code>Sales_Order_Item__c.Product__r.D365FO_Color__c</code></td></tr>
 <tr><td><code>IVC_DMS_LineID</code></td><td><code>Sales_Order_Item__c.Id</code></td></tr>
 </tbody></table>
-<ul><li>Riêng SO Part Dropship: <code>InventBatchId</code> ← <code>inventBatchId__c</code>, <code>LicensePlateId</code> ← <code>LicensePlateId__c</code></li></ul>
+<ul><li>Riêng SO Part Dropship: <code>InventBatchId</code> ← <code>Sales_Order_Item__c.inventBatchId__c</code>, <code>LicensePlateId</code> ← <code>Sales_Order_Item__c.LicensePlateId__c</code></li></ul>
 <table class="grid"><thead><tr><th>Key payload gửi D365</th><th>← Field SF / giá trị</th></tr></thead><tbody>
 <tr><td><code>InventSiteId</code></td><td>Hằng 'IVC'</td></tr>
 <tr><td><code>InventLocationId</code></td><td>Hằng 'IVC'</td></tr>
@@ -2016,9 +2305,9 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <tr><td><code>WMSLocationId</code></td><td>Hằng ''</td></tr>
 </tbody></table>
 <h4>Response</h4>
-<p>⚠ không ghi lại vào SF (đoạn update <code>SalesId__c</code> đang bị comment). SalesId về sau qua <code>Sync_ResultSO</code> (#15)</p><h4>Kết quả ERP thường trả về</h4><table class="grid"><thead><tr><th style="width:12%">Success</th><th>Message thật ghi nhận trên Partial</th></tr></thead><tbody><tr><td>true</td><td><code>Successfully inserted data into the temp table. Lines=N</code> (N là số dòng đã nhận). ERP ghi vào bảng tạm rồi xử lý tiếp, chưa phải đã tạo xong SO.</td></tr></tbody></table><p>SalesId của SO ERP tạo ra <strong>không</strong> nằm trong response này. ERP gửi lại qua webhook Inbound <code>Sync_ResultSO</code> (xem Phần 2), kèm <code>IVC_DMS_ID</code> là Id của Sales Order DMS đã gửi.</p>
+<p><code>SalesId</code> của Sales Order do ERP cấp được đồng bộ ngược lại vào DMS thông qua webhook Inbound <code>Sync_ResultSO</code> (xem Phần 2).</p><h4>Kết quả ERP thường trả về</h4><table class="grid"><thead><tr><th style="width:12%">Success</th><th>Message thật ghi nhận trên Partial</th></tr></thead><tbody><tr><td>true</td><td><code>Successfully inserted data into the temp table. Lines=N</code> (N là số dòng đã nhận). ERP ghi vào bảng tạm rồi xử lý tiếp, chưa phải đã tạo xong SO.</td></tr></tbody></table><p>SalesId của SO ERP tạo ra <strong>không</strong> nằm trong response này. ERP gửi lại qua webhook Inbound <code>Sync_ResultSO</code> (xem Phần 2), kèm <code>IVC_DMS_ID</code> là Id của Sales Order DMS đã gửi.</p>
 
-<h3 id="p3-fn-CreateDOPart"><span class="tag">CreateDOPart</span>Tạo Sales Order bên ERP cho Delivery Order Part</h3><p class="fn-meta">Luồng: DO DMS → SO ERP.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
+<h3 id="p3-fn-CreateDOPart"><span class="tag">3.2</span><span class="tag">CreateDOPart</span>Tạo Sales Order bên ERP cho Delivery Order Part</h3><p class="fn-meta">Luồng: DO DMS → SO ERP.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
   &quot;_request&quot;: {
     &quot;Lines&quot;: [
       {
@@ -2060,35 +2349,35 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <h4>Endpoint</h4>
 <p><code>OMN1_ServiceAPI_CreateOrder/createSalesOrder</code> (cùng endpoint với #13)</p>
 <h4>Payload header</h4>
-<p><code>_request.*</code>, DO = <code>Delivery_Order__c</code></p>
+<p><code>_request.*</code></p>
 <table class="grid"><thead><tr><th>Key payload gửi D365</th><th>← Field SF / giá trị</th></tr></thead><tbody>
-<tr><td><code>CustAccount</code></td><td><code>DO.Dealer__r.AccountNumber</code> với DO POSM hoặc Accessory, còn lại ← <code>DO.Sales_Order__r.Account__r.AccountNumber</code></td></tr>
-<tr><td><code>CurrencyCodex</code></td><td><code>DO.CurrencyIsoCode</code></td></tr>
-<tr><td><code>DlvMode</code></td><td><code>DO.DlvMode__c</code></td></tr>
-<tr><td><code>SalesPoolId</code></td><td><code>DO.Sale_Pool_ID__c</code></td></tr>
-<tr><td><code>PaymMode</code></td><td><code>DO.PaymMode__c</code></td></tr>
-<tr><td><code>Payment</code></td><td><code>DO.Payment__c</code></td></tr>
-<tr><td><code>CustomerRef</code></td><td><code>DO.Customer_Ref__c</code></td></tr>
-<tr><td><code>DefaultDimension</code></td><td><code>DO.Sales_Order__r.ERP_Default_Dimension__c</code></td></tr>
-<tr><td><code>InventLocationId</code></td><td><code>DO.Issuing_Warehouse__r.Warehouse_Code__c</code></td></tr>
-<tr><td><code>IVC_DMS_ID</code></td><td><code>DO.Id</code></td></tr>
-<tr><td><code>TotalLine</code></td><td>= tổng số Picking List History</td></tr>
+<tr><td><code>CustAccount</code></td><td><code>Delivery_Order__c.Dealer__r.AccountNumber</code> với DO POSM hoặc Accessory, còn lại ← <code>Delivery_Order__c.Sales_Order__r.Account__r.AccountNumber</code></td></tr>
+<tr><td><code>CurrencyCodex</code></td><td><code>Delivery_Order__c.CurrencyIsoCode</code></td></tr>
+<tr><td><code>DlvMode</code></td><td><code>Delivery_Order__c.DlvMode__c</code></td></tr>
+<tr><td><code>SalesPoolId</code></td><td><code>Delivery_Order__c.Sale_Pool_ID__c</code></td></tr>
+<tr><td><code>PaymMode</code></td><td><code>Delivery_Order__c.PaymMode__c</code></td></tr>
+<tr><td><code>Payment</code></td><td><code>Delivery_Order__c.Payment__c</code></td></tr>
+<tr><td><code>CustomerRef</code></td><td><code>Delivery_Order__c.Customer_Ref__c</code></td></tr>
+<tr><td><code>DefaultDimension</code></td><td><code>Delivery_Order__c.Sales_Order__r.ERP_Default_Dimension__c</code></td></tr>
+<tr><td><code>InventLocationId</code></td><td><code>Delivery_Order__c.Issuing_Warehouse__r.Warehouse_Code__c</code></td></tr>
+<tr><td><code>IVC_DMS_ID</code></td><td><code>Delivery_Order__c.Id</code></td></tr>
+<tr><td><code>TotalLine</code></td><td>= tổng số dòng <code>Picking_List_History__c</code> của DO</td></tr>
 <tr><td><code>InventSiteId</code></td><td>Hằng 'IVC'</td></tr>
 <tr><td><code>TaxGroup</code></td><td>Hằng 'all'</td></tr>
 </tbody></table>
 <h4>Payload <code>_request.Lines[]</code></h4>
 <p>từ <code>Picking_List_History__c</code></p>
 <table class="grid"><thead><tr><th>Key payload gửi D365</th><th>← Field SF / giá trị</th></tr></thead><tbody>
-<tr><td><code>ItemId</code></td><td><code>Product__r.D365FO_ItemId__c</code></td></tr>
-<tr><td><code>Qty</code></td><td><code>Quantity__c</code></td></tr>
-<tr><td><code>SalesUnit</code></td><td><code>Product__r.Unit_of_Measure_by_Sale__r.Symbol__c</code></td></tr>
+<tr><td><code>ItemId</code></td><td><code>Picking_List_History__c.Product__r.D365FO_ItemId__c</code></td></tr>
+<tr><td><code>Qty</code></td><td><code>Picking_List_History__c.Quantity__c</code></td></tr>
+<tr><td><code>SalesUnit</code></td><td><code>Picking_List_History__c.Product__r.Unit_of_Measure_by_Sale__r.Symbol__c</code></td></tr>
 <tr><td><code>SalesPrice</code></td><td><code>Delivery_Order_Item__c.Unit_Price__c</code> (cùng DO và Product)</td></tr>
-<tr><td><code>LineAmount</code></td><td>= <code>SalesPrice</code> × <code>Quantity__c</code></td></tr>
-<tr><td><code>InventLocationId</code></td><td><code>DO.Issuing_Warehouse__r.Warehouse_Code__c</code></td></tr>
-<tr><td><code>WMSLocationId</code></td><td><code>Warehouse_Location__r.Code_Name__c</code></td></tr>
-<tr><td><code>InventBatchId</code></td><td>= <code>ItemId</code> + '_' + <code>Code_Name__c</code> (rỗng nếu kho advanced và location tạm)</td></tr>
-<tr><td><code>LicensePlateId</code></td><td>= 'LP_' + <code>ItemId</code> + '_' + <code>Code_Name__c</code> (chỉ có với kho advanced và location thường, còn lại rỗng)</td></tr>
-<tr><td><code>InventColorId</code></td><td><code>Product__r.D365FO_Color__c</code> (chỉ nhóm hàng <code>CAB_PNT</code>)</td></tr>
+<tr><td><code>LineAmount</code></td><td>= <code>Delivery_Order_Item__c.Unit_Price__c</code> × <code>Picking_List_History__c.Quantity__c</code></td></tr>
+<tr><td><code>InventLocationId</code></td><td><code>Delivery_Order__c.Issuing_Warehouse__r.Warehouse_Code__c</code></td></tr>
+<tr><td><code>WMSLocationId</code></td><td><code>Picking_List_History__c.Warehouse_Location__r.Code_Name__c</code></td></tr>
+<tr><td><code>InventBatchId</code></td><td>= <code>Picking_List_History__c.Product__r.D365FO_ItemId__c</code> + '_' + <code>Picking_List_History__c.Warehouse_Location__r.Code_Name__c</code> (rỗng nếu kho advanced và location tạm)</td></tr>
+<tr><td><code>LicensePlateId</code></td><td>= 'LP_' + <code>Picking_List_History__c.Product__r.D365FO_ItemId__c</code> + '_' + <code>Picking_List_History__c.Warehouse_Location__r.Code_Name__c</code> (chỉ có với kho advanced và location thường, còn lại rỗng)</td></tr>
+<tr><td><code>InventColorId</code></td><td><code>Picking_List_History__c.Product__r.D365FO_Color__c</code> (chỉ nhóm hàng <code>CAB_PNT</code>)</td></tr>
 <tr><td><code>IVC_DMS_LineID</code></td><td><code>Picking_List_History__c.Id</code></td></tr>
 <tr><td><code>InventSiteId</code></td><td>Hằng 'IVC'</td></tr>
 <tr><td><code>ConfigId</code></td><td>Hằng 'STD'</td></tr>
@@ -2097,7 +2386,15 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <h4>Response</h4>
 <p><code>SalesId</code> ghi vào <code>Delivery_Order__c.SalesId__c</code></p><h4>Kết quả ERP thường trả về</h4><table class="grid"><thead><tr><th style="width:12%">Success</th><th>Message thật ghi nhận trên Partial</th></tr></thead><tbody><tr><td>true</td><td><code>Successfully inserted data into the temp table. Lines=N</code></td></tr></tbody></table><p>Response có thể kèm <code>SalesId</code>. Nếu có, DMS ghi vào <code>D365FO_Hook__c.SalesId__c</code> và <code>Delivery_Order__c.SalesId__c</code>. ERP cũng có thể gửi <code>Sync_ResultSO</code> với <code>IVC_DMS_ID</code> là Id của Delivery Order.</p>
 
-<h3 id="p3-fn-PostPackingSlip"><span class="tag">PostPackingSlip</span>Post Packing Slip bên ERP</h3><p class="fn-meta">Luồng: Packing Slip DMS → Packing Slip ERP.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
+<h3 id="p3-fn-CreateDOPart_Claim"><span class="tag">3.3</span><span class="tag">CreateDOPart_Claim</span>Tạo Sales Order cho DO Part có Claim (Claim__c != null) bên ERP (chờ nối API)</h3><p class="fn-meta">Luồng: DO DMS → SO ERP (Ticket #6102 Luồng 1).</p><table class="grid"><thead><tr><th>Batch class</th><th>Hướng</th><th>Luồng nghiệp vụ</th></tr></thead><tbody>
+<tr><td><em>Chưa có batch dispatch (chờ nối API)</em></td><td>Outbound</td><td>DO Claim DMS -&gt; SO ERP</td></tr>
+</tbody></table>
+<h4>Khi nào sinh hook</h4>
+<p><code>Inventory_Transaction__c</code> đổi <code>Status__c</code> sang 'Completed', có <code>Delivery_Order__c</code> và Sales Order của DO đó có <code>Claim__c != null</code> (sinh từ Case Claim đại lý, #6102). Payload được dựng sẵn tương tự <code>CreateDOPart</code> nhưng được gán <code>Function__c = 'CreateDOPart_Claim'</code>.</p>
+<h4>Tình trạng tích hợp</h4>
+<p>Hook hiện chỉ được lưu vào bảng <code>D365FO_Hook__c</code> trên DMS (<code>isRun__c = false</code>). <code>TriggerHookD365FOHandle</code> hiện chưa dispatch function này sang batch callout, đang chờ thống nhất endpoint và hoàn thiện kết nối với ERP.</p>
+
+<h3 id="p3-fn-PostPackingSlip"><span class="tag">3.4</span><span class="tag">PostPackingSlip</span>Post Packing Slip bên ERP</h3><p class="fn-meta">Luồng: Packing Slip DMS → Packing Slip ERP.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
   &quot;_request&quot;: {
     &quot;SalesId&quot;: &quot;ARSO0034745&quot;
   }
@@ -2117,7 +2414,7 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <tr><td>false</td><td><code>An exception occured when invoking the operation - Posting … Sales order: ARSO… Item: …</code> (lỗi khi post trong D365FO)</td></tr>
 </tbody></table><p>Khi thành công, ERP post Packing Slip và về sau gửi webhook Inbound <code>8_PostPacking</code> (xem Phần 2).</p>
 
-<h3 id="p3-fn-ERP_SOCancelled"><span class="tag">ERP_SOCancelled</span>Hủy Sales Order bên ERP</h3><p class="fn-meta">Luồng: SO DMS → Cancel SO ERP.</p><p><em>15 lần gọi gần nhất trên Partial không có hook nào của function này, nên chưa có request mẫu thật.</em></p><table class="grid"><thead><tr><th>Batch class</th><th>Hướng</th><th>Luồng nghiệp vụ</th></tr></thead><tbody>
+<h3 id="p3-fn-ERP_SOCancelled"><span class="tag">3.5</span><span class="tag">ERP_SOCancelled</span>Hủy Sales Order bên ERP</h3><p class="fn-meta">Luồng: SO DMS → Cancel SO ERP.</p><p><em>15 lần gọi gần nhất trên Partial không có hook nào của function này, nên chưa có request mẫu thật.</em></p><table class="grid"><thead><tr><th>Batch class</th><th>Hướng</th><th>Luồng nghiệp vụ</th></tr></thead><tbody>
 <tr><td>Batch_SF_ERP_SOCancelled</td><td>Outbound</td><td>SO DMS -&gt; Cancel SO ERP</td></tr>
 </tbody></table>
 <h4>Khi nào gửi</h4>
@@ -2129,8 +2426,7 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <h4>Response</h4>
 <p>không cập nhật object SF nào</p><h4>Request (cấu trúc theo code)</h4><pre><code>{ "_request": { "SalesId": "ARSO0034745" } }</code></pre>
 
-  <h2 id="p3-s5" class="page-break">5. Nhóm Purchase Order, Shipment và Transfer Order</h2>
-  <h3 id="p3-fn-createPurchaseOrder"><span class="tag">createPurchaseOrder</span>Tạo Purchase Order bên ERP</h3><p class="fn-meta">Luồng: SO DMS → PO ERP.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
+<h3 id="p3-fn-createPurchaseOrder"><span class="tag">3.6</span><span class="tag">createPurchaseOrder</span>Tạo Purchase Order bên ERP</h3><p class="fn-meta">Luồng: SO DMS → PO ERP.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
   &quot;_request&quot;: {
     &quot;Lines&quot;: [
       {
@@ -2151,31 +2447,37 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
     &quot;defaultdimension&quot;: null,
     &quot;InclTax&quot;: &quot;1&quot;,
     &quot;CurrencyCode&quot;: &quot;VND&quot;,
-    &quot;PurchName&quot;: &quot;Test PO from PowerShell&quot;,
+    &quot;PurchName&quot;: &quot;PO-20261023-001&quot;,
     &quot;VendorAccount&quot;: &quot;V00051&quot;
   }
 }</code></pre><table class="grid"><thead><tr><th>Batch class</th><th>Hướng</th><th>Luồng nghiệp vụ</th></tr></thead><tbody>
 <tr><td>Batch_SF_createPurchaseOrder</td><td>Outbound</td><td>SO DMS -&gt; PO ERP</td></tr>
 </tbody></table>
 <h4>Khi nào gửi</h4>
-<p><code>Sales_Order__c</code> đổi <code>Status__c</code> sang 'Accepted', RT Support SPV, FLS Support hoặc Service, và có SOI</p>
+<p>DMS gửi khi một trong các điều kiện sau thỏa mãn (<code>TriggerSalesOrderHandler.callAPICreateSO</code>):</p>
+<ul>
+  <li><strong>Nhóm 1</strong>: <code>Sales_Order__c</code> đổi <code>Status__c</code> sang <code>Accepted</code>, thuộc Record Type <code>Support SPV</code>, <code>FLS Support</code> hoặc <code>Service</code>, và có ít nhất 1 dòng <code>Sales_Order_Item__c</code>.</li>
+  <li><strong>Nhóm 2 (CRS Claim - Ticket #6411)</strong>: <code>Sales_Order__c</code> thuộc Record Type <code>CRS Claim</code> chuyển <code>Status__c</code> sang <code>Open</code> (bắt buộc sau khi Đại lý đính kèm hóa đơn).</li>
+  <li><strong>Nhóm 3 (AFS Claim - Mobile Service - Ticket #6376)</strong>: <code>Sales_Order__c</code> thuộc Record Type <code>AFS Claim</code> chuyển <code>Status__c</code> sang <code>Sync ERP</code>.</li>
+</ul>
 <h4>Endpoint</h4>
 <p><code>OMN1_ServiceAPI_CreatePO/createPurchaseOrder</code></p>
 <h4>Payload header</h4>
 <p><code>_request.*</code></p>
 <table class="grid"><thead><tr><th>Key payload gửi D365</th><th>← Field SF / giá trị</th></tr></thead><tbody>
 <tr><td><code>VendorAccount</code></td><td><code>Sales_Order__c.Account__r.Account_Supplier__r.AccountNumber</code></td></tr>
-<tr><td><code>defaultdimension</code></td><td><code>ERP_Default_Dimension__c</code></td></tr>
+<tr><td><code>defaultdimension</code></td><td><code>Sales_Order__c.ERP_Default_Dimension__c</code> (riêng SO CRS Claim luôn gửi rỗng <code>""</code> theo xác nhận của ERP)</td></tr>
 <tr><td><code>CurrencyCode</code></td><td>Hằng 'VND'</td></tr>
 <tr><td><code>InclTax</code></td><td>Hằng '1'</td></tr>
+<tr><td><code>DeliveryDate</code></td><td>Ngày giao hàng (định dạng YYYY-MM-DD)</td></tr>
+<tr><td><code>PurchName</code></td><td>Tên Purchase Order</td></tr>
 </tbody></table>
-<ul><li>⚠ Hardcode test: <code>DeliveryDate</code>='2026-04-24', <code>PurchName</code>='Test PO from PowerShell'</li></ul>
 <h4>Payload <code>_request.Lines[]</code></h4>
 <p>từ <code>Sales_Order_Item__c</code></p>
 <table class="grid"><thead><tr><th>Key payload gửi D365</th><th>← Field SF / giá trị</th></tr></thead><tbody>
-<tr><td><code>ItemId</code></td><td><code>ItemId__c</code></td></tr>
-<tr><td><code>Qty</code></td><td><code>Quantity__c</code></td></tr>
-<tr><td><code>PurchPrice</code></td><td>= <code>Claim_Amount__c</code> / <code>Quantity__c</code></td></tr>
+<tr><td><code>ItemId</code></td><td><code>Sales_Order_Item__c.ItemId__c</code></td></tr>
+<tr><td><code>Qty</code></td><td><code>Sales_Order_Item__c.Quantity__c</code></td></tr>
+<tr><td><code>PurchPrice</code></td><td>= <code>Sales_Order_Item__c.Claim_Amount__c</code> / <code>Sales_Order_Item__c.Quantity__c</code></td></tr>
 <tr><td><code>InventSiteId</code></td><td>Hằng 'IVC'</td></tr>
 <tr><td><code>InventLocationId</code></td><td>Hằng 'IVC'</td></tr>
 <tr><td><code>PurchUnit</code></td><td>Hằng 'EA'</td></tr>
@@ -2189,7 +2491,7 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <tr><td>false</td><td><code>An exception occured when invoking the operation - VendorAccount is required</code>. Xảy ra khi <code>VendorAccount</code> trống.</td></tr>
 </tbody></table>
 
-<h3 id="p3-fn-ERP_ShipmentCompleted"><span class="tag">ERP_ShipmentCompleted</span>Tạo Inventory Journal (chuyển vị trí kho) bên ERP</h3><p class="fn-meta">Luồng: Shipment DMS → Journal ERP.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
+<h3 id="p3-fn-ERP_ShipmentCompleted"><span class="tag">3.7</span><span class="tag">ERP_ShipmentCompleted</span>Tạo Inventory Journal (chuyển vị trí kho) bên ERP</h3><p class="fn-meta">Luồng: Shipment DMS → Journal ERP.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
   &quot;_request&quot;: {
     &quot;Lines&quot;: [
       {
@@ -2226,20 +2528,20 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <p><code>_request.*</code></p>
 <table class="grid"><thead><tr><th>Key payload gửi D365</th><th>← Field SF / giá trị</th></tr></thead><tbody>
 <tr><td><code>IVC_DMS_ID</code></td><td><code>Shipment__c.Id</code></td></tr>
-<tr><td><code>TotalLine</code></td><td>= tổng số history</td></tr>
+<tr><td><code>TotalLine</code></td><td>= tổng số dòng <code>Binning_Slip_History__c</code></td></tr>
 <tr><td><code>InventSiteId</code></td><td><code>Shipment__c.Warehouse__r.Name</code></td></tr>
 <tr><td><code>InventLocationId</code></td><td><code>Shipment__c.Warehouse__r.Site__r.Name</code></td></tr>
+<tr><td><code>JournalNameId</code></td><td>Hằng 'TRN'</td></tr>
 </tbody></table>
-<ul><li>⚠ Hai key trên bị đảo giá trị: Site nhận tên Warehouse, Location nhận tên Site</li><li><code>JournalNameId</code>: Hằng 'TRN'</li></ul>
 <h4>Payload <code>_request.Lines[]</code></h4>
 <p>từ <code>Binning_Slip_History__c</code></p>
 <table class="grid"><thead><tr><th>Key payload gửi D365</th><th>← Field SF / giá trị</th></tr></thead><tbody>
-<tr><td><code>ItemId</code></td><td><code>Product__r.D365FO_ItemId__c</code></td></tr>
-<tr><td><code>Qty</code>, <code>UnitQty</code></td><td><code>-Quantity__c</code> (số âm)</td></tr>
-<tr><td><code>IVC_DMS_LineID</code></td><td>Id của history</td></tr>
+<tr><td><code>ItemId</code></td><td><code>Binning_Slip_History__c.Product__r.D365FO_ItemId__c</code></td></tr>
+<tr><td><code>Qty</code>, <code>UnitQty</code></td><td><code>-Binning_Slip_History__c.Quantity__c</code> (số âm)</td></tr>
+<tr><td><code>IVC_DMS_LineID</code></td><td><code>Binning_Slip_History__c.Id</code></td></tr>
 </tbody></table>
-<ul><li>Kho đi:<ul><li><code>InventLocationIdFrom</code> ← tên Warehouse của Shipment</li><li><code>InventBatchIdFrom</code> ← <code>Batch_Number_From__c</code></li><li><code>WMSLocationIdFrom</code> ← location chờ (kho advanced) hoặc location tạm</li><li><code>WHSLicensePlateIdFrom</code> ← <code>Licenses_Plate_From__c</code> (chỉ kho advanced)</li></ul></li></ul>
-<ul><li>Kho đến:<ul><li><code>InventLocationIdTo</code> ← <code>Binning_Slip__r.Shipment__r.Warehouse__r.Warehouse_Code__c</code></li><li><code>WMSLocationIdTo</code> ← <code>Warehouse_Location__r.Name</code></li><li><code>InventBatchIdTo</code> = <code>ItemId</code> + '_' + <code>Code_Name__c</code> (rỗng nếu kho advanced và location tạm)</li><li><code>WHSLicensePlateIdTo</code> = 'LP_' + <code>ItemId</code> + '_' + <code>Code_Name__c</code> (chỉ có với kho advanced và location thường)</li></ul></li></ul>
+<ul><li>Kho đi:<ul><li><code>InventLocationIdFrom</code> ← <code>Shipment__c.Warehouse__r.Name</code> (tên Warehouse của Shipment)</li><li><code>InventBatchIdFrom</code> ← <code>Binning_Slip_History__c.Batch_Number_From__c</code></li><li><code>WMSLocationIdFrom</code> ← <code>Binning_Slip_History__c.Warehouse_Location_From__r.Name</code> (location chờ kho advanced hoặc location tạm)</li><li><code>WHSLicensePlateIdFrom</code> ← <code>Binning_Slip_History__c.Licenses_Plate_From__c</code> (chỉ kho advanced)</li></ul></li></ul>
+<ul><li>Kho đến:<ul><li><code>InventLocationIdTo</code> ← <code>Binning_Slip_History__c.Binning_Slip__r.Shipment__r.Warehouse__r.Warehouse_Code__c</code></li><li><code>WMSLocationIdTo</code> ← <code>Binning_Slip_History__c.Warehouse_Location__r.Name</code></li><li><code>InventBatchIdTo</code> = <code>Binning_Slip_History__c.Product__r.D365FO_ItemId__c</code> + '_' + <code>Binning_Slip_History__c.Warehouse_Location__r.Code_Name__c</code> (rỗng nếu kho advanced và location tạm)</li><li><code>WHSLicensePlateIdTo</code> = 'LP_' + <code>Binning_Slip_History__c.Product__r.D365FO_ItemId__c</code> + '_' + <code>Binning_Slip_History__c.Warehouse_Location__r.Code_Name__c</code> (chỉ có với kho advanced và location thường)</li></ul></li></ul>
 <table class="grid"><thead><tr><th>Key payload gửi D365</th><th>← Field SF / giá trị</th></tr></thead><tbody>
 <tr><td><code>InventSiteIdFrom</code></td><td>Hằng 'IVC'</td></tr>
 <tr><td><code>InventSiteIdTo</code></td><td>Hằng 'IVC'</td></tr>
@@ -2250,7 +2552,7 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <tr><td>false</td><td><code>Exception: Read timed out</code>: ERP không trả lời trong 120 giây với request 54 dòng. DMS không tự gửi lại.</td></tr>
 </tbody></table><p>Response có thể kèm <code>JournalId</code>, DMS ghi vào <code>Shipment__c.JournalId__c</code>. ERP cũng có thể trả lại qua webhook Inbound <code>Sync_ResultTJ</code> với <code>IVC_DMS_ID</code> là Id của Shipment.</p>
 
-<h3 id="p3-fn-ERP_RegistrationPO_Loc"><span class="tag">ERP_RegistrationPO_Loc</span>Registration PO Local: báo ERP đã nhận hàng vào kho</h3><p class="fn-meta">Luồng: Shipment (PO Local) DMS → PO ERP.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
+<h3 id="p3-fn-ERP_RegistrationPO_Loc"><span class="tag">3.8</span><span class="tag">ERP_RegistrationPO_Loc</span>Registration PO Local: báo ERP đã nhận hàng vào kho</h3><p class="fn-meta">Luồng: Shipment (PO Local) DMS → PO ERP.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
   &quot;_request&quot;: {
     &quot;Lines&quot;: [
       {
@@ -2322,7 +2624,7 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <tr><td>Tổ hợp khác hoặc thiếu dữ liệu</td><td></td><td>Không</td><td>Không</td></tr>
 </tbody></table><h4>Response và chiều về</h4><p>ERP trả <code>Success</code> + <code>Message</code> (thật: <code>Successfully inserted data into the temp table. Lines=N</code>). Sau khi ERP làm Receipt, kết quả quay về qua webhook Inbound <code>Receipt_PO_Local</code> (xem Phần 2). Nếu ERP hủy Receipt thì dùng <code>Cancel_PO_Local</code>.</p><p>Một lần ghi nhận thất bại thật: <code>Exception: Invalid JSON response:</code>. ERP trả body rỗng hoặc không phải JSON.</p>
 
-<h3 id="p3-fn-CreateTOVehicle"><span class="tag">CreateTOVehicle</span>Tạo Transfer Order xe bên ERP</h3><p class="fn-meta">Luồng: TO DMS → TO ERP. Dùng chung batch <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pWC000003BYSrYAO" target="_blank" rel="noopener"><code>Batch_SF_CreateTOVehicle</code></a> và chung endpoint với <code>CreateTOPart</code>.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
+<h3 id="p3-fn-CreateTOVehicle"><span class="tag">3.9</span><span class="tag">CreateTOVehicle</span>Tạo Transfer Order xe bên ERP</h3><p class="fn-meta">Luồng: TO DMS → TO ERP. Dùng chung batch <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pWC000003BYSrYAO" target="_blank" rel="noopener"><code>Batch_SF_CreateTOVehicle</code></a> và chung endpoint với <code>CreateTOPart</code>.</p><h4>Request mẫu (lấy từ một lần gọi thật trên Partial)</h4><pre><code>{
   &quot;_request&quot;: {
     &quot;Lines&quot;: [
       {
@@ -2349,7 +2651,7 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
     &quot;TotalLine&quot;: 1
   }
 }</code></pre><h4>Khi nào gửi</h4><ul><li><code>Transfer_Order__c</code> đổi <code>Status__c</code> sang <code>Approved</code>, có <code>Purchase_Order__c</code>.</li><li>PO phải có Record Type <strong>Dealer Display Vehicle</strong> (mượn xe trưng bày).</li><li>Bỏ qua TO đã có hook gửi thành công hoặc đang chờ chạy (tránh gửi trùng khi approve lại).</li><li>Thiếu dữ liệu bắt buộc thì <strong>chặn Approve</strong> và báo "Cannot send Transfer Order to ERP. Missing: …".</li></ul><h4>Endpoint</h4><p><code>OMN1_ServiceAPI_CreateTransferOrder/createTransferOrder</code></p><h4>Payload header</h4><p><code>_request.*</code></p><table class="grid"><thead><tr><th style=width:30%>Key payload gửi D365</th><th style=width:>← Field DMS / giá trị</th></tr></thead><tbody>
-<tr><td><code>TotalLine</code></td><td>Số dòng được gửi (mỗi dòng <code>Transfer_Order_Item__c</code> là một xe)</td></tr>
+<tr><td><code>TotalLine</code></td><td>= số dòng <code>Transfer_Order_Item__c</code> được gửi (mỗi dòng là một xe)</td></tr>
 <tr><td><code>FromWarehouse</code></td><td><code>Transfer_Order__c.Source_Warehouse__r.D365FO_InventLocationId__c</code>, fallback <code>Warehouse_Code__c</code></td></tr>
 <tr><td><code>ToWarehouse</code></td><td><code>Transfer_Order__c.Destination_Warehouse__r.D365FO_InventLocationId__c</code>, fallback <code>Warehouse_Code__c</code></td></tr>
 <tr><td><code>Transit</code></td><td>Hằng <code>TRT</code></td></tr>
@@ -2357,29 +2659,29 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <tr><td><code>IsSyncDms</code></td><td>Hằng <code>1</code></td></tr>
 </tbody></table><h4>Payload <code>_request.Lines[]</code></h4><table class="grid"><thead><tr><th style=width:30%>Key payload gửi D365</th><th style=width:>← Field DMS / giá trị</th></tr></thead><tbody>
 <tr><td><code>IVC_DMS_LineID</code></td><td><code>Transfer_Order_Item__c.Id</code></td></tr>
-<tr><td><code>ItemId</code></td><td><code>Product__r.D365FO_ItemId__c</code></td></tr>
+<tr><td><code>ItemId</code></td><td><code>Transfer_Order_Item__c.Product__r.D365FO_ItemId__c</code></td></tr>
 <tr><td><code>Qty</code></td><td><code>Transfer_Order_Item__c.Quantity__c</code></td></tr>
-<tr><td><code>UnitId</code></td><td><code>Unit_of_Measure__r.Symbol__c</code>, dòng chưa có đơn vị thì <code>unit</code></td></tr>
+<tr><td><code>UnitId</code></td><td><code>Transfer_Order_Item__c.Unit_of_Measure__r.Symbol__c</code> (dòng chưa có đơn vị thì <code>unit</code>)</td></tr>
 <tr><td><code>InventSiteId</code></td><td>Hằng <code>IVC</code></td></tr>
 <tr><td><code>InventLocationId</code></td><td>Giống <code>FromWarehouse</code></td></tr>
 <tr><td><code>WMSLocationId</code>, <code>InventBatchId</code>, <code>LicensePlateId</code></td><td>Luôn rỗng. ERP tự nhập</td></tr>
 <tr><td><code>ConfigId</code>, <code>InventSizeId</code></td><td>Hằng <code>STD</code></td></tr>
-<tr><td><code>InventColorId</code></td><td><code>Product__r.D365FO_Color__c</code></td></tr>
-<tr><td><code>DeviceId</code></td><td><code>Vehicle__r.Name</code> (số VIN)</td></tr>
+<tr><td><code>InventColorId</code></td><td><code>Transfer_Order_Item__c.Product__r.D365FO_Color__c</code></td></tr>
+<tr><td><code>DeviceId</code></td><td><code>Transfer_Order_Item__c.Vehicle__r.Name</code> (số VIN)</td></tr>
 </tbody></table><h4>Response và chiều về</h4><p>ERP trả <code>Success</code> + <code>Message</code> (thật: <code>Successfully inserted data into the temp table. Lines=N</code>). Chiều về <strong>không</strong> có webhook riêng: ERP tạo Transfer Order và đẩy lại qua đồng bộ master data <code>InventTransferTable</code> (Phần 1), trong đó <code>IVC_DMS_ID</code> là Id Transfer Order của DMS. <code>TransferStatus</code> = 1 thì DMS đưa TO sang <code>In Transit</code> và ghi <code>ERP_Transfer_Number__c</code>; <code>TransferStatus</code> = 2 thì TO thành <code>Completed</code>.</p>
 
-<h3 id="p3-fn-CreateTOPart"><span class="tag">CreateTOPart</span>Tạo Transfer Order Part bên ERP</h3><p class="fn-meta">Luồng: DO Part DMS → TO ERP. Dùng chung batch <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pWC000003BYSrYAO" target="_blank" rel="noopener"><code>Batch_SF_CreateTOVehicle</code></a> và chung endpoint với <code>CreateTOVehicle</code>.</p><p><em>Chưa có hook <code>CreateTOPart</code> nào trên Partial, nên chưa có request mẫu thật. Cấu trúc giống <code>CreateTOVehicle</code>, <code>DeviceId</code> và <code>InventColorId</code> để rỗng.</em></p><h4>Khi nào gửi</h4><ul><li><code>Delivery_Order__c</code> Record Type <code>Part_Delivery_Order</code> đổi <code>Delivery_Status__c</code> sang <code>In Transit</code>, có <code>Transfer_Order__c</code>.</li><li><code>Transfer_Order__r.TO_Type__c</code> thuộc <code>Part - Other Department</code> hoặc <code>Part - AFS/Central Warehouse</code>. <code>TO_Type__c</code> trống là TO nội bộ DMS, không gửi ERP.</li><li><code>ObjectId__c</code> của hook = Id <code>Transfer_Order__c</code>; chống gửi trùng theo <code>ObjectId__c</code>.</li></ul><h4>Endpoint</h4><p><code>OMN1_ServiceAPI_CreateTransferOrder/createTransferOrder</code></p><h4>Payload header</h4><p><code>_request.*</code></p><table class="grid"><thead><tr><th style=width:30%>Key payload gửi D365</th><th style=width:>← Field DMS / giá trị</th></tr></thead><tbody>
-<tr><td><code>TotalLine</code></td><td>Số dòng được gửi (chỉ dòng có <code>Picked_Quantity__c</code> &gt; 0, fallback <code>Delivery_Quantity__c</code>)</td></tr>
+<h3 id="p3-fn-CreateTOPart"><span class="tag">3.10</span><span class="tag">CreateTOPart</span>Tạo Transfer Order Part bên ERP</h3><p class="fn-meta">Luồng: DO Part DMS → TO ERP. Dùng chung batch <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pWC000003BYSrYAO" target="_blank" rel="noopener"><code>Batch_SF_CreateTOVehicle</code></a> và chung endpoint với <code>CreateTOVehicle</code>.</p><p><em>Chưa có hook <code>CreateTOPart</code> nào trên Partial, nên chưa có request mẫu thật. Cấu trúc giống <code>CreateTOVehicle</code>, <code>DeviceId</code> và <code>InventColorId</code> để rỗng.</em></p><h4>Khi nào gửi</h4><ul><li><code>Delivery_Order__c</code> Record Type <code>Part_Delivery_Order</code> đổi <code>Delivery_Status__c</code> sang <code>In Transit</code>, có <code>Transfer_Order__c</code>.</li><li><code>Transfer_Order__r.TO_Type__c</code> thuộc <code>Part - Other Department</code> hoặc <code>Part - AFS/Central Warehouse</code>. <code>TO_Type__c</code> trống là TO nội bộ DMS, không gửi ERP.</li><li><code>ObjectId__c</code> của hook = Id <code>Transfer_Order__c</code>; chống gửi trùng theo <code>ObjectId__c</code>.</li></ul><h4>Endpoint</h4><p><code>OMN1_ServiceAPI_CreateTransferOrder/createTransferOrder</code></p><h4>Payload header</h4><p><code>_request.*</code></p><table class="grid"><thead><tr><th style=width:30%>Key payload gửi D365</th><th style=width:>← Field DMS / giá trị</th></tr></thead><tbody>
+<tr><td><code>TotalLine</code></td><td>= số dòng <code>Delivery_Order_Item__c</code> được gửi (chỉ dòng có <code>Picked_Quantity__c</code> &gt; 0, fallback <code>Delivery_Quantity__c</code>)</td></tr>
 <tr><td><code>FromWarehouse</code></td><td><code>Delivery_Order__c.Issuing_Warehouse__r.D365FO_InventLocationId__c</code>, fallback <code>Warehouse_Code__c</code></td></tr>
 <tr><td><code>ToWarehouse</code></td><td><code>Delivery_Order__c.Receiving_Warehouse__r.D365FO_InventLocationId__c</code>, fallback <code>Warehouse_Code__c</code></td></tr>
 <tr><td><code>Transit</code></td><td>Hằng <code>TRT</code></td></tr>
 <tr><td><code>IVC_DMS_ID</code></td><td><code>Transfer_Order__c.Id</code>. ERP trả lại giá trị này trong bảng <code>InventTransferTable</code> (xem mục chiều về)</td></tr>
 <tr><td><code>IsSyncDms</code></td><td>Hằng <code>1</code></td></tr>
 </tbody></table><h4>Payload <code>_request.Lines[]</code></h4><table class="grid"><thead><tr><th style=width:30%>Key payload gửi D365</th><th style=width:>← Field DMS / giá trị</th></tr></thead><tbody>
-<tr><td><code>IVC_DMS_LineID</code></td><td><code>Transfer_Order_Item__c.Id</code> (fallback Id dòng Delivery Order Item)</td></tr>
-<tr><td><code>ItemId</code></td><td><code>Product__r.D365FO_ItemId__c</code></td></tr>
-<tr><td><code>Qty</code></td><td><code>Delivery_Order_Item__c.Picked_Quantity__c</code>, fallback <code>Delivery_Quantity__c</code></td></tr>
-<tr><td><code>UnitId</code></td><td><code>Unit_of_Measure__r.Symbol__c</code>, dòng chưa có đơn vị thì <code>đơn vị bán của sản phẩm</code></td></tr>
+<tr><td><code>IVC_DMS_LineID</code></td><td><code>Transfer_Order_Item__c.Id</code> (fallback Id dòng <code>Delivery_Order_Item__c</code>)</td></tr>
+<tr><td><code>ItemId</code></td><td><code>Delivery_Order_Item__c.Product__r.D365FO_ItemId__c</code></td></tr>
+<tr><td><code>Qty</code></td><td><code>Delivery_Order_Item__c.Picked_Quantity__c</code> (fallback <code>Delivery_Order_Item__c.Delivery_Quantity__c</code>)</td></tr>
+<tr><td><code>UnitId</code></td><td><code>Delivery_Order_Item__c.Unit_of_Measure__r.Symbol__c</code> (dòng chưa có đơn vị thì lấy từ đơn vị bán của sản phẩm)</td></tr>
 <tr><td><code>InventSiteId</code></td><td>Hằng <code>IVC</code></td></tr>
 <tr><td><code>InventLocationId</code></td><td>Giống <code>FromWarehouse</code></td></tr>
 <tr><td><code>WMSLocationId</code>, <code>InventBatchId</code>, <code>LicensePlateId</code></td><td>Luôn rỗng. ERP tự nhập</td></tr>
@@ -2388,14 +2690,12 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <tr><td><code>DeviceId</code></td><td>Rỗng (Part không có VIN)</td></tr>
 </tbody></table><h4>Response và chiều về</h4><p>ERP trả <code>Success</code> + <code>Message</code> (thật: <code>Successfully inserted data into the temp table. Lines=N</code>). Chiều về <strong>không</strong> có webhook riêng: ERP tạo Transfer Order và đẩy lại qua đồng bộ master data <code>InventTransferTable</code> (Phần 1), trong đó <code>IVC_DMS_ID</code> là Id Transfer Order của DMS. <code>TransferStatus</code> = 1 thì DMS đưa TO sang <code>In Transit</code> và ghi <code>ERP_Transfer_Number__c</code>; <code>TransferStatus</code> = 2 thì TO thành <code>Completed</code>.</p>
 
-  <h2 id="p3-s6" class="page-break">6. Nhóm đang tắt</h2>
-  <p>Hai function dưới đây còn trong code nhưng <strong>không chạy</strong> trên hệ thống hiện tại. ERP chưa cần cung cấp endpoint.</p>
-  <h3 id="p3-fn-4_SF_InventoryTransaction_Completed"><span class="tag">4_SF_InventoryTransaction_Completed</span>Báo ERP đã nhận Transfer <strong>(đang tắt)</strong></h3><p class="fn-meta">Luồng: TO DMS → TO ERP.</p><table class="grid"><thead><tr><th>Batch class</th><th>Hướng</th><th>Luồng nghiệp vụ</th></tr></thead><tbody>
+  <h3 id="p3-fn-4_SF_InventoryTransaction_Completed"><span class="tag">3.11</span><span class="tag">4_SF_InventoryTransaction_Completed</span>Báo ERP đã nhận Transfer <strong>(đang tắt)</strong></h3><p class="fn-meta">Luồng: TO DMS → TO ERP.</p><table class="grid"><thead><tr><th>Batch class</th><th>Hướng</th><th>Luồng nghiệp vụ</th></tr></thead><tbody>
 <tr><td>Batch4_SF_InventoryTransaction_Completed</td><td>Outbound</td><td>TO DMS -&gt; TO ERP</td></tr>
 </tbody></table>
 <h4>Khi nào gửi</h4>
 <p><code>Inventory_Transaction__c</code> đổi <code>Status__c</code> sang 'Completed'</p>
-<ul><li>⚠ Lời gọi <code>createHookRecords</code> đang bị comment, nên luồng này hiện không chạy</li></ul>
+<ul><li>Chức năng này hiện đang tạm ngưng trên hệ thống, phía ERP chưa cần cấu hình tiếp nhận.</li></ul>
 <h4>Endpoint</h4>
 <p><code>OMN1_ServiceAPI_InventoryTransaction/receiveTransfer</code></p>
 <h4>Payload</h4>
@@ -2404,12 +2704,12 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <h4>Response</h4>
 <p>không cập nhật object SF nào</p>
 
-<h3 id="p3-fn-5_SF_BinningSlip_Completed"><span class="tag">5_SF_BinningSlip_Completed</span>Báo ERP xử lý Binning Slip <strong>(đang tắt)</strong></h3><p class="fn-meta">Luồng: Binning Slip DMS → Binning Slip ERP.</p><table class="grid"><thead><tr><th>Batch class</th><th>Hướng</th><th>Luồng nghiệp vụ</th></tr></thead><tbody>
+<h3 id="p3-fn-5_SF_BinningSlip_Completed"><span class="tag">3.12</span><span class="tag">5_SF_BinningSlip_Completed</span>Báo ERP xử lý Binning Slip <strong>(đang tắt)</strong></h3><p class="fn-meta">Luồng: Binning Slip DMS → Binning Slip ERP.</p><table class="grid"><thead><tr><th>Batch class</th><th>Hướng</th><th>Luồng nghiệp vụ</th></tr></thead><tbody>
 <tr><td>Batch5_SF_BinningSlip_Completed</td><td>Outbound</td><td>Binning Slip DMS -&gt; Binning Slip ERP</td></tr>
 </tbody></table>
 <h4>Khi nào gửi</h4>
 <p><code>Binning_Slip__c</code> đổi <code>Status__c</code> sang 'Completed'</p>
-<ul><li>⚠ Hàm tạo hook đang bị comment</li><li>⚠ Hàm này set <code>function_name</code>='SF_BinningSlip_Completed', không khớp <code>5_SF_BinningSlip_Completed</code>. Vì vậy dù bật lại thì Batch5 cũng không chạy</li></ul>
+<ul><li>Chức năng này hiện đang tạm ngưng trên hệ thống, phía ERP chưa cần cấu hình tiếp nhận.</li></ul>
 <h4>Endpoint</h4>
 <p><code>OMN1_ServiceAPI_BinningSlip/process</code></p>
 <h4>Payload</h4>
@@ -2418,11 +2718,11 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <h4>Response</h4>
 <p>không cập nhật object SF nào</p>
 
-  <h2 id="p3-s7">7. Vòng gửi đi và gửi về của từng function</h2>
+  <h2 id="p3-s7">4. Vòng gửi đi và gửi về của từng function</h2>
   <p>Kết quả nghiệp vụ thật của nhiều function Outbound quay về DMS qua một kênh khác. Bảng dưới giúp ERP biết sau khi nhận request cần gửi lại gì.</p>
   <table class="grid"><thead><tr><th style=width:28%>Function Outbound (DMS gửi đi)</th><th style=width:26%>ERP trả lời ngay</th><th style=width:>Kết quả thật quay về DMS qua</th></tr></thead><tbody>
 <tr><td><code>CreateSO</code></td><td><code>Success</code> + <code>Message</code></td><td>Webhook <code>Sync_ResultSO</code> (SalesId, <code>IVC_DMS_ID</code> = Id Sales Order). Xác nhận dòng và VIN qua <code>8a_ConfirmSO</code></td></tr>
-<tr><td><code>CreateDOPart</code></td><td><code>Success</code> + <code>Message</code> + <code>SalesId</code></td><td>SalesId ghi ngay từ response; ERP cũng có thể gửi <code>Sync_ResultSO</code> với <code>IVC_DMS_ID</code> = Id Delivery Order</td></tr>
+<tr><td><code>CreateDOPart</code>, <code>CreateDOPart_Claim</code></td><td><code>Success</code> + <code>Message</code> + <code>SalesId</code></td><td>SalesId ghi ngay từ response; ERP cũng có thể gửi <code>Sync_ResultSO</code> với <code>IVC_DMS_ID</code> = Id Delivery Order / Claim</td></tr>
 <tr><td><code>PostPackingSlip</code></td><td><code>Success</code> + <code>Message</code> (SalesStatus)</td><td>Webhook <code>8_PostPacking</code> (Packing Slip đã post), sau đó <code>9_PostInvoice</code></td></tr>
 <tr><td><code>ERP_SOCancelled</code></td><td><code>Success</code> + <code>Message</code></td><td>Không có chiều về</td></tr>
 <tr><td><code>createPurchaseOrder</code></td><td><code>Success</code> + <code>Message</code> + <code>PurchId</code></td><td>PurchId ghi ngay từ response. Về sau PO có thể quay lại qua <code>6_PurchTable_Confirm</code></td></tr>
@@ -2431,7 +2731,7 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <tr><td><code>CreateTOVehicle</code>, <code>CreateTOPart</code></td><td><code>Success</code> + <code>Message</code></td><td>Không có webhook riêng. ERP đẩy qua đồng bộ master data <code>InventTransferTable</code> / <code>InventTransferLine</code> (Phần 1), echo <code>IVC_DMS_ID</code></td></tr>
 </tbody></table>
 
-  <h2 id="p3-s8">8. Checklist dành cho ERP developer</h2>
+  <h2 id="p3-s8">5. Checklist dành cho ERP developer</h2>
   <ol>
     <li>Mỗi endpoint ở mục 3 nhận <code>POST</code> JSON dạng <code>{ "_request": { … } }</code> và xác thực bằng token OAuth2 (client credentials) mà ERP cấp cho DMS.</li>
     <li>Trả HTTP 200 và <code>{ "Success": true|false, "Message": "…" }</code>. Khi lỗi nghiệp vụ, trả <code>Success</code> = false kèm <code>Message</code> dễ hiểu, vì DMS lưu nguyên văn vào <code>Message__c</code> cho người dùng xem.</li>
@@ -2439,7 +2739,7 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
     <li>Response phải là JSON hợp lệ kể cả khi lỗi. Body rỗng hoặc HTML khiến DMS ghi "Invalid JSON response" và gửi email cảnh báo.</li>
     <li>Với function có Id trả về (<code>SalesId</code>, <code>PurchId</code>, <code>JournalId</code>), trả đúng tên key để DMS ghi lại.</li>
     <li>Dùng <code>IVC_DMS_ID</code>, <code>IVC_DMS_LineID</code>, <code>MessageId</code> để chống tạo trùng, vì DMS có thể gửi lại cùng một nghiệp vụ nếu sự kiện kích hoạt xảy ra lần nữa.</li>
-    <li>Khi xử lý xong bất đồng bộ, gửi kết quả về đúng webhook Inbound ở mục 7 và echo lại các Id của DMS (<code>IVC_DMS_ID</code>, <code>IVC_DMS_LineID</code>).</li>
+    <li>Khi xử lý xong bất đồng bộ, gửi kết quả về đúng webhook Inbound ở mục 4 và echo lại các Id của DMS (<code>IVC_DMS_ID</code>, <code>IVC_DMS_LineID</code>).</li>
     <li>Thay đổi tên key hoặc cấu trúc payload phải thống nhất với DMS team, vì payload được dựng cứng trong Apex.</li>
   </ol>
 
@@ -2799,8 +3099,8 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
 <tr><td><code>DueDate__c</code></td><td><code>DueDate</code></td></tr>
 </tbody></table><ul><li>Chỉ sync khi <code>InvoiceAccount</code> là Account có <code>D365FO_VendGroup__c</code>='DLR'</li></ul><h4>Dữ liệu đổ tiếp sang bảng khác của DMS (theo tài liệu Business Mapping)</h4><ul><li><code>D365FO_VendTrans__c</code>: Làm cơ sở để resolver map lookup <code>D365FO_VendInvoiceJour__c</code> cho các giao dịch chi trả tiền.</li><li><code>Purchase_Order__c</code> &amp; <code>Sales_Order__c</code>: Ánh xạ trực tiếp mã PO/SO dựa trên trường <code>PurchId__c</code> để gắn hóa đơn nhà cung cấp vào đơn hàng tương ứng trên DMS.</li></ul>
 <h2 id="p4-s8">8. Đang tắt</h2>
-<h3 id="p4-m-PriceDiscAdmTable"><span class="tag">PriceDiscAdmTable</span>Pricebook2</h3><p class="fn-meta">Object đích trên DMS: <code>Pricebook2</code>.</p><p><strong>Ý nghĩa bên ERP:</strong> Bảng giá (Price Book) gốc từ ERP.</p><h4>Cột DMS yêu cầu ERP trả về (selectFields, cấu hình trên Partial)</h4><p><code>JournalNum, DefaultRelation, Name, Posted, PostedDate, JournalName, ModifiedDateTime, RecId</code></p><h4>Mapping field</h4><ul><li>⚠ Đang tắt (lời gọi bị comment)</li></ul>
-<h3 id="p4-m-PriceDiscAdmTrans"><span class="tag">PriceDiscAdmTrans</span>PricebookEntry</h3><p class="fn-meta">Object đích trên DMS: <code>PricebookEntry</code>.</p><p><strong>Ý nghĩa bên ERP:</strong> Chi tiết dòng bảng giá từ ERP.</p><h4>Cột DMS yêu cầu ERP trả về (selectFields, cấu hình trên Partial)</h4><p><code>relation, AccountCode, AccountRelation, ItemCode, ItemRelation, UnitId, Amount, Currency, QuantityAmountFrom, QuantityAmountTo, FromDate, ToDate, RecId, ModifiedDateTime</code></p><h4>Mapping field</h4><ul><li>⚠ Đang tắt (cả lời gọi và method bị comment)</li></ul><h2 id="p4-s9" class="page-break">9. Ghi chú nghiệp vụ liên bảng</h2><div class="callout warn"><span class="label">Nguồn</span>Các ghi chú dưới đây chuyển từ tài liệu <code>docs/Knowledge/D365FO_DMS_Business_Mapping.md</code>. Tài liệu đó chưa cập nhật các xử lý mới, nên cần đối chiếu lại khi có thay đổi.</div><h3>Product2: hai nguồn đổ về (InventTable và EcoResProduct)</h3><ul><li><strong>Chức năng nghiệp vụ:</strong> <code>Product2</code> là object trung tâm đại diện cho mọi loại "sản phẩm" bán/quản lý trên DMS (Xe, Phụ tùng, Dịch vụ, POSM). Khác với các bảng ở trên (1 nguồn D365FO → 1 object DMS), <code>Product2</code> được <strong>2 luồng đồng bộ độc lập</strong> từ D365FO cùng đổ dữ liệu vào, thông qua 2 bảng staging riêng biệt (InventTable và EcoResProduct) và 2 Queueable xử lý riêng.</li></ul>
+<h3 id="p4-m-PriceDiscAdmTable"><span class="tag">PriceDiscAdmTable</span>Pricebook2</h3><p class="fn-meta">Object đích trên DMS: <code>Pricebook2</code>.</p><p><strong>Ý nghĩa bên ERP:</strong> Bảng giá (Price Book) gốc từ ERP.</p><h4>Cột DMS yêu cầu ERP trả về (selectFields, cấu hình trên Partial)</h4><p><code>JournalNum, DefaultRelation, Name, Posted, PostedDate, JournalName, ModifiedDateTime, RecId</code></p><h4>Mapping field</h4><ul><li>Luồng đồng bộ bảng giá hiện đang tạm ngưng trên hệ thống.</li></ul>
+<h3 id="p4-m-PriceDiscAdmTrans"><span class="tag">PriceDiscAdmTrans</span>PricebookEntry</h3><p class="fn-meta">Object đích trên DMS: <code>PricebookEntry</code>.</p><p><strong>Ý nghĩa bên ERP:</strong> Chi tiết dòng bảng giá từ ERP.</p><h4>Cột DMS yêu cầu ERP trả về (selectFields, cấu hình trên Partial)</h4><p><code>relation, AccountCode, AccountRelation, ItemCode, ItemRelation, UnitId, Amount, Currency, QuantityAmountFrom, QuantityAmountTo, FromDate, ToDate, RecId, ModifiedDateTime</code></p><h4>Mapping field</h4><ul><li>Luồng đồng bộ bảng giá hiện đang tạm ngưng trên hệ thống.</li></ul><h2 id="p4-s9" class="page-break">9. Ghi chú nghiệp vụ liên bảng</h2><h3>Product2: hai nguồn đổ về (InventTable và EcoResProduct)</h3><ul><li><strong>Chức năng nghiệp vụ:</strong> <code>Product2</code> là object trung tâm đại diện cho mọi loại "sản phẩm" bán/quản lý trên DMS (Xe, Phụ tùng, Dịch vụ, POSM). Khác với các bảng ở trên (1 nguồn D365FO → 1 object DMS), <code>Product2</code> được <strong>2 luồng đồng bộ độc lập</strong> từ D365FO cùng đổ dữ liệu vào, thông qua 2 bảng staging riêng biệt (InventTable và EcoResProduct) và 2 Queueable xử lý riêng.</li></ul>
 <ul><li><strong>Danh sách Record Type của <code>Product2</code> (định nghĩa tại <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e0UIAQ" target="_blank" rel="noopener"><code>RecordTypeHelper.cls</code></a>):</strong></li></ul>
 <table class="grid"><thead><tr><th>Record Type</th><th>Ý nghĩa</th><th>Biến trong <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e0UIAQ" target="_blank" rel="noopener"><code>RecordTypeHelper</code></a></th></tr></thead><tbody>
 <tr><td><strong>Vehicle</strong></td><td>Xe thương phẩm</td><td><code>PRODUCT_VEHICLE</code></td></tr>
@@ -2954,21 +3254,18 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
     <tbody>
 <tr><td><code>CreateSO</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023dyNIAQ" target="_blank" rel="noopener"><code>classes/Batch12_SF_CreateSO.cls</code></a></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e1mIAA" target="_blank" rel="noopener"><code>TriggerSalesOrderHandler.callAPICreateSO</code></a></td><td><code>OMN1_ServiceAPI_CreateOrder/createSalesOrder</code></td></tr>
 <tr><td><code>CreateDOPart</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023dyOIAQ" target="_blank" rel="noopener"><code>classes/Batch13_SF_CreateDOPart.cls</code></a></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e1CIAQ" target="_blank" rel="noopener"><code>TriggerInventoryTransactionHandler.completePXK_Parts</code></a></td><td><code>OMN1_ServiceAPI_CreateOrder/createSalesOrder</code></td></tr>
+<tr><td><code>CreateDOPart_Claim</code></td><td><em>Chưa có (chờ nối API)</em></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e1CIAQ" target="_blank" rel="noopener"><code>TriggerInventoryTransactionHandler.completePXK_Parts (#6102)</code></a></td><td><code>Chưa cấu hình</code></td></tr>
 <tr><td><code>PostPackingSlip</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023dz1IAA" target="_blank" rel="noopener"><code>classes/Batch_SF_IssueComplete.cls</code></a></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e12IAA" target="_blank" rel="noopener"><code>TriggerDeliveryOrderHandler.createHookForDO</code></a> (và TriggerInventoryTransactionHandler.createHookForInventory_Transaction)</td><td><code>OMN1_ServicePackingSlip/postPackingSlip</code></td></tr>
 <tr><td><code>ERP_SOCancelled</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu000002BGjSIAW" target="_blank" rel="noopener"><code>classes/Batch_SF_ERP_SOCancelled.cls</code></a></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e1mIAA" target="_blank" rel="noopener"><code>TriggerSalesOrderHandler.callAPIWhenSOCancelled</code></a></td><td><code>OMN1_ServiceCancelSO/cancelSO</code></td></tr>
-<tr><td><code>createPurchaseOrder</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu000002BGjTIAW" target="_blank" rel="noopener"><code>classes/Batch_SF_createPurchaseOrder.cls</code></a></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e1mIAA" target="_blank" rel="noopener"><code>TriggerSalesOrderHandler.callAPICreateSO</code></a></td><td><code>OMN1_ServiceAPI_CreatePO/createPurchaseOrder</code></td></tr>
+<tr><td><code>createPurchaseOrder</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu000002BGjTIAW" target="_blank" rel="noopener"><code>classes/Batch_SF_createPurchaseOrder.cls</code></a></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e1mIAA" target="_blank" rel="noopener"><code>TriggerSalesOrderHandler.callAPICreateSO</code></a> (Support SPV/FLS/Service Accepted, CRS Claim Open #6411, AFS Claim Sync ERP #6376)</td><td><code>OMN1_ServiceAPI_CreatePO/createPurchaseOrder</code></td></tr>
 <tr><td><code>ERP_ShipmentCompleted</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu000002MRObIAO" target="_blank" rel="noopener"><code>classes/Batch_SF_ShipmentCompleted.cls</code></a></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e1sIAA" target="_blank" rel="noopener"><code>TriggerShipmentHandler.callAPIWhenShipmentCompleted</code></a></td><td><code>OMN1_ServiceAPI_BinningSlip/createInventJournal</code></td></tr>
 <tr><td><code>ERP_RegistrationPO_Loc</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pWC0000035tmvYAA" target="_blank" rel="noopener"><code>classes/Batch_SF_RegistrationPO_Loc.cls</code></a></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e1sIAA" target="_blank" rel="noopener"><code>TriggerShipmentHandler.callAPIRegistrationPOWhenShipmentCompleted</code></a></td><td><code>OMN1_ServiceAPI_RegistrationPO/createRegistrationPO_Loc</code></td></tr>
 <tr><td><code>CreateTOVehicle</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pWC000003BYSrYAO" target="_blank" rel="noopener"><code>classes/Batch_SF_CreateTOVehicle.cls</code></a></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e1yIAA" target="_blank" rel="noopener"><code>TriggerTransferOrderHandler.createHookCreateTOVehicle</code></a></td><td><code>OMN1_ServiceAPI_CreateTransferOrder/createTransferOrder</code></td></tr>
 <tr><td><code>CreateTOPart</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pWC000003BYSrYAO" target="_blank" rel="noopener"><code>classes/Batch_SF_CreateTOVehicle.cls</code></a></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e1yIAA" target="_blank" rel="noopener"><code>TriggerTransferOrderHandler.createHookCreateTOPart</code></a> (gọi từ TriggerDeliveryOrderHandler)</td><td><code>OMN1_ServiceAPI_CreateTransferOrder/createTransferOrder</code></td></tr>
-<tr><td><code>4_SF_InventoryTransaction_Completed</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023dyWIAQ" target="_blank" rel="noopener"><code>classes/Batch4_SF_InventoryTransaction_Completed.cls</code></a></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e1CIAQ" target="_blank" rel="noopener"><code>TriggerInventoryTransactionHandler.createHookRecords</code></a> (lời gọi đang bị comment)</td><td><code>OMN1_ServiceAPI_InventoryTransaction/receiveTransfer</code></td></tr>
-<tr><td><code>5_SF_BinningSlip_Completed</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023dyXIAQ" target="_blank" rel="noopener"><code>classes/Batch5_SF_BinningSlip_Completed.cls</code></a></td><td><code>Hàm</code> tạo hook đang bị comment (và đặt sai function_name)</td><td><code>OMN1_ServiceAPI_BinningSlip/process</code></td></tr>
+<tr><td><code>4_SF_InventoryTransaction_Completed</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023dyWIAQ" target="_blank" rel="noopener"><code>classes/Batch4_SF_InventoryTransaction_Completed.cls</code></a></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e1CIAQ" target="_blank" rel="noopener"><code>TriggerInventoryTransactionHandler.createHookRecords</code></a> (luồng đang tạm ngưng)</td><td><code>OMN1_ServiceAPI_InventoryTransaction/receiveTransfer</code></td></tr>
+<tr><td><code>5_SF_BinningSlip_Completed</code></td><td><a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023dyXIAQ" target="_blank" rel="noopener"><code>classes/Batch5_SF_BinningSlip_Completed.cls</code></a></td><td><code>TriggerBinningSlipHandler</code> (luồng đang tạm ngưng)</td><td><code>OMN1_ServiceAPI_BinningSlip/process</code></td></tr>
     </tbody>
   </table>
-  <div class="callout warn">
-    <span class="label">Cần dev DMS xác nhận</span>
-    Trong <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e12IAA" target="_blank" rel="noopener"><code>TriggerDeliveryOrderHandler</code></a>, dòng gọi <code>createHookForDO</code> có comment <code>// TATT</code>, và dòng gọi <code>createHookForInventory_Transaction</code> ở <a href="https://ivcl--partial.sandbox.my.salesforce.com/01pVu0000023e1CIAQ" target="_blank" rel="noopener"><code>TriggerInventoryTransactionHandler</code></a> cũng có comment tương tự. Tuy vậy hook <code>PostPackingSlip</code> vẫn phát sinh trên Partial. Cần xác nhận hook này do nơi nào tạo ra trước khi sửa.
-  </div>
 
   <h2 id="aA5">A.5. Master Data (Phần 1 và Phần 4)</h2>
   <ul>
@@ -2977,12 +3274,78 @@ Ghi kết quả lên hook: isRun__c, isSuccess__c, Message__c   (và Id do ERP t
     <li>Cấu hình cột lấy về của từng bảng: Setup → Custom Metadata Types → MasterDataD365 → Manage (Phần 1, mục 5.1).</li>
     <li>Mapping field của từng bảng: Phần 4.</li>
   </ul>
+
+  <h2 class="part-title page-break" id="appendixC">Phụ lục C. Evidence kiểm chứng trên org Partial</h2>
+  <p class="part-meta"><span class="fn-meta">Mục đích: chứng minh các mô tả trong Phần 1 đến 3 bằng màn hình thật, và ghi lại những chỗ tài liệu cũ lệch với org khi đối chiếu.</span></p>
+
+  <h2 id="aC1">C.1. Cách thực hiện</h2>
+  <ul>
+    <li><strong>Org:</strong> Partial (sandbox của IVC). Chỉ đọc: không bấm nút chạy, không sửa dữ liệu hay cấu hình nào khi chụp.</li>
+    <li><strong>Công cụ:</strong> trình duyệt tự động Playwright, cửa sổ 1440 × 900, đăng nhập bằng phiên của DMS admin. Ngày chụp 2026-11-03.</li>
+    <li><strong>Ẩn thông tin nhạy cảm:</strong> <em>Client ID</em>, <em>Client Secret</em> (ảnh E4) và danh sách email cảnh báo (ảnh E3) được thay bằng chữ “đã ẩn khi chụp ảnh” trên màn hình trước khi chụp. Không có secret nào nằm trong tệp ảnh.</li>
+    <li><strong>Bản ghi hook trong ảnh E5 đến E8</strong> là bản ghi thật đã có sẵn trên Partial, chọn theo từng kiểu (Inbound thành công, Inbound lỗi, Outbound, Master Data). Số hiệu <code>DH-…</code> ghi trong tiêu đề để tra lại; Id đổi khi Partial được làm mới.</li>
+    <li>Tệp ảnh nằm trong thư mục <code>images/d365fo/</code> cạnh tài liệu này; bấm vào ảnh để xem cỡ gốc.</li>
+  </ul>
+
+  <h2 id="aC2">C.2. Bảng tổng hợp evidence</h2>
+  <table class="grid">
+    <thead><tr><th class="c" style="width:6%">Mã</th><th style="width:27%">Nội dung</th><th style="width:25%">Đường dẫn trên Partial</th><th style="width:15%">Chứng minh</th><th>Mục liên quan</th></tr></thead>
+    <tbody>
+      <tr><td class="c"><a href="#figE1">E1</a></td><td>Job lập lịch D365Sync_* trên Partial</td><td><code>/lightning/setup/ScheduledJobs/home</code></td><td>Lịch chạy thật của schedule sync</td><td><a href="#p1-s6">Phần 1, mục 6</a></td></tr>
+      <tr><td class="c"><a href="#figE2">E2</a></td><td>Danh sách bản ghi Custom Metadata MasterDataD365</td><td><code>/lightning/setup/CustomMetadata/page?address=%2Fm02%3Fsetupid%3DCustomMetadata</code></td><td>Cấu hình từng bảng master data</td><td><a href="#p1-s5">Phần 1, mục 5.1</a></td></tr>
+      <tr><td class="c"><a href="#figE3">E3</a></td><td>Custom Setting D365FO Settings (dòng cấp org)</td><td><code>/lightning/setup/CustomSettings/page?address=%2Fsetup%2Fui%2FlistCustomSettingsData.apexp%3Fid%3Da0a</code></td><td>Công tắc tổng và mốc đồng bộ</td><td><a href="#p1-s5">Phần 1, mục 5.2</a></td></tr>
+      <tr><td class="c"><a href="#figE4">E4</a></td><td>Custom Setting AUTHENTICATION API</td><td><code>/lightning/setup/CustomSettings/page?address=%2Fsetup%2Fui%2FlistCustomSettingsData.apexp%3Fid%3Da03</code></td><td>Thông tin kết nối ERP của DMS</td><td><a href="#p1-s5">Phần 1, mục 5.3</a></td></tr>
+      <tr><td class="c"><a href="#figE5">E5</a></td><td>Hook Inbound thành công: 8_PostPacking (DH-00191252)</td><td><code>/lightning/r/D365FO_Hook__c/a0WWC000003onrp2AA/view</code></td><td>Một webhook Inbound xử lý thành công</td><td><a href="#p2-s7">Phần 2, mục 7.1</a></td></tr>
+      <tr><td class="c"><a href="#figE6">E6</a></td><td>Hook Inbound lỗi: Cancel_PO_Local (DH-00191150)</td><td><code>/lightning/r/D365FO_Hook__c/a0WWC000003oiCD2AY/view</code></td><td>Cách một webhook Inbound báo lỗi</td><td><a href="#p2-s7">Phần 2, mục 7.3</a></td></tr>
+      <tr><td class="c"><a href="#figE7">E7</a></td><td>Hook Outbound: CreateSO (DH-00191824)</td><td><code>/lightning/r/D365FO_Hook__c/a0WWC000003pBpJ2AU/view</code></td><td>Payload và phản hồi của một webhook Outbound</td><td><a href="#p3-fn-CreateSO">Phần 3, <code>CreateSO</code></a></td></tr>
+      <tr><td class="c"><a href="#figE8">E8</a></td><td>Hook Master Data: InventTable (DH-00191834)</td><td><code>/lightning/r/D365FO_Hook__c/a0WWC000003pC5R2AU/view</code></td><td>Một vòng gọi getData của schedule sync</td><td><a href="#p1-s5">Phần 1, mục 5.4</a></td></tr>
+      <tr><td class="c"><a href="#figE9">E9</a></td><td>Tab Run Test: nút Apply Sync Schedule Configs</td><td><code>/lightning/n/Run_Test</code></td><td>Nơi làm mới lịch bằng tay</td><td><a href="#p1-s6">Phần 1, mục 6.1</a></td></tr>
+      <tr><td class="c"><a href="#figE10">E10</a></td><td>Apex Jobs: chuỗi Queueable → Batch của master data</td><td><code>/lightning/setup/AsyncApexJobs/home</code></td><td>Chuỗi xử lý bước 7 đến 9 ở mục 3</td><td><a href="#p1-s3">Phần 1, mục 3</a></td></tr>
+    </tbody>
+  </table>
+  <p class="fn-meta">Đường dẫn tính sau tên miền <code>https://ivcl--partial.sandbox.lightning.force.com</code>. Các trang Setup tự chuyển sang miền <code>…my.salesforce-setup.com</code>.</p>
+
+  <h2 id="aC3">C.3. Điều rút ra khi đối chiếu với org</h2>
+  <div class="callout note">
+    <span class="label">Cập nhật cấu hình lịch đồng bộ Master Data</span>
+    Cấu hình lịch hiện tại ở ba bảng: <code>InventSum</code> (phút 10, 12, 17, 32, 47, 57); <code>VendInvoiceJour</code> chạy phút 58 và 59 mỗi giờ; <code>VendTrans</code> có lịch phút 16 và 17. Mục 6.3 đã được đồng bộ chuẩn xác theo cấu hình <code>MasterDataD365</code> trên Partial.
+  </div>
+  <div class="callout note">
+    <span class="label">Lưu ý đường dẫn cấu hình Custom Setting</span>
+    Ở mục 2.3, trang Manage sử dụng tiền tố khóa dữ liệu: <code>id=a0a</code> cho <em>D365FO Settings</em> và <code>id=a03</code> cho <em>AUTHENTICATION API</em>.
+  </div>
+  <div class="callout ok">
+    <span class="label">Xác thực user tích hợp Inbound</span>
+    Các hook Inbound trên Partial (ảnh E5, E6) có <em>Owner</em> và <em>Created By</em> là user tích hợp <code>D365FO.integration</code>.
+  </div>
+  <div class="callout note">
+    <span class="label">Cấu hình Scheduled Jobs Master Data</span>
+    Ngoài nhóm <code>D365Sync_*</code>, hệ thống đang vận hành các job định kỳ: <code>Sched_ProcessInventSumBatch_Min_00/30</code> và <code>Sched_ProcessVendInvoiceJourBatch_Min_00/30</code>, chạy phút 00 và 30 mỗi giờ để xử lý dữ liệu staging.
+  </div>
 <!--APPX-END-->
 
-  <footer class="doc-foot">
-    Tích hợp D365FO ⇄ DMS · Phần 1 đến 4 và Phụ lục A · Cập nhật 2026-10-23
-  </footer>
+  <footer class="doc-foot"><span>Tích hợp D365FO ⇄ DMS · Phần 1 đến 4, Phụ lục A và C</span><span>Phiên bản 2.0 · Cập nhật 2026-11-03 · Org tham chiếu: Partial</span></footer>
 
 </main>
+</div>
+<script>
+(function(){
+  var det=[].slice.call(document.querySelectorAll("nav.toc details"));
+  window.addEventListener("beforeprint",function(){det.forEach(function(d){d.setAttribute("data-was",d.open?"1":"0");d.open=true;});});
+  window.addEventListener("afterprint",function(){det.forEach(function(d){d.open=d.getAttribute("data-was")==="1";});});
+  var links=[].slice.call(document.querySelectorAll("nav.toc a[href^=\"#\"]"));
+  var map={};links.forEach(function(a){map[a.getAttribute("href").slice(1)]=a;});
+  var heads=[].slice.call(document.querySelectorAll("main h2[id]"));
+  function spy(){
+    var cur=null;heads.forEach(function(h){if(h.getBoundingClientRect().top<120)cur=h;});
+    links.forEach(function(a){a.classList.remove("active");});
+    if(!cur)return; var a=map[cur.id]; if(a){a.classList.add("active");}
+    var part=null;for(var i=heads.indexOf(cur);i>=0;i--){if(heads[i].classList.contains("part-title")){part=heads[i];break;}}
+    det.forEach(function(d){d.open=part&&d.getAttribute("data-part")===part.id;});
+  }
+  var t=null;window.addEventListener("scroll",function(){if(t)return;t=setTimeout(function(){t=null;spy();},120);},{passive:true});
+  spy();
+})();
+</script>
 </body>
 </html>

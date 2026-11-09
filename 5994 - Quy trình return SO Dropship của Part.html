@@ -189,7 +189,22 @@
   /* Badge chờ ERP (UM luồng DLR Stock) */
   .role.erp  { background: #f2994a; }
   .role.sync { background: #8e44ad; }
-  figure.shot.pending .ph { padding: 28pt 12pt; border: 2px dashed var(--line); border-radius: 3px; background: var(--zebra); color: var(--muted); text-align: center; font-size: 10pt; }</style>
+  figure.shot.pending .ph { padding: 28pt 12pt; border: 2px dashed var(--line); border-radius: 3px; background: var(--zebra); color: var(--muted); text-align: center; font-size: 10pt; }
+  /* Sơ đồ swimlane luồng DLR Stock (cùng quy ước màu với sơ đồ gốc: cam = thủ công, xanh = tự động) */
+  table.swim { width: 100%; margin: 8pt 0 4pt; border-collapse: collapse; table-layout: fixed; font-size: 8.5pt; line-height: 1.3; }
+  table.swim th, table.swim td { border: 1px solid #d5d9e0; padding: 4pt 4pt; vertical-align: top; text-align: left; }
+  table.swim th.lane { width: 7%; background: #d83a34; color: #fff; text-align: center; vertical-align: middle; font-size: 10pt; }
+  table.swim td.m { background: #fbe3d6; }
+  table.swim td.a { background: #b7e4a0; }
+  table.swim td.w { background: #e4d6f1; }
+  table.swim td.n { background: #eceff3; color: #444; }
+  table.swim td.e { background: #fff; }
+  table.swim td b.step { display: block; margin-bottom: 2pt; font-size: 9pt; }
+  table.swim code { padding: 0 1pt; font-size: 7.5pt; white-space: nowrap; word-break: normal; }
+  table.swim .sub { margin-top: 3pt; padding: 2pt 3pt; background: #b7e4a0; border-radius: 2px; }
+  .swim-legend { display: flex; flex-wrap: wrap; gap: 4pt 14pt; margin: 4pt 0 2pt; font-size: 9.5pt; }
+  .swim-legend span.sw { display: inline-block; width: 12pt; height: 9pt; margin-right: 4pt; border: 1px solid #c9ced6; vertical-align: -1pt; }
+</style>
 </head>
 <body>
 <main class="page">
@@ -200,7 +215,7 @@
 
   <table class="meta">
     <tr><th>Ticket</th><td>5994 – Quy trình return SO Dropship của Part</td></tr>
-    <tr><th>Môi trường</th><td>Partial và QA (Sandbox) – API đã triển khai; kiểm chứng trên QA ngày 23/10/2026 và <strong>test toàn luồng trên Partial ngày 28/10/2026</strong></td></tr>
+    <tr><th>Môi trường</th><td>Partial và QA (Sandbox) – API đã triển khai; kiểm chứng trên QA ngày 23/10/2026 và <strong>test toàn luồng trên Partial ngày 28/10/2026</strong>. <strong>Cập nhật 02/11/2026</strong>: Record Type <em>DO Return Dropship</em>, Auto-complete DO, <em>Create Offset SO</em> và xử lý ERP gửi lặp đã triển khai trên <strong>Partial và QA</strong></td></tr>
     <tr><th>Đối tượng</th><td><strong>Purchase Order</strong> (loại Dropship), <strong>Sales Order</strong> (Record Type <strong>Part Sales Order</strong> và <strong>SO Dropship Return</strong>), <strong>Delivery Order</strong> (Part DO), <strong>Shipment</strong> (Dealer), <strong>Inventory Transaction</strong> (Goods Receipt, Goods Issue), <strong>D365FO Hook</strong></td></tr>
     <tr><th>Trường hợp</th><td><strong>1. Return Dropship khi Đại lý chưa nhập kho xong</strong>: Shipment của Đại lý chưa <code>Completed</code>.<br><strong>2. Return Dropship khi Đại lý đã nhập kho (DLR Stock)</strong>: Tạo Part DO từ SO Return, Post Update DO (Pick, Pack, Goods Issue), trừ tồn kho Đại lý và tạo SO bán bù.</td></tr>
     <tr><th>Tài liệu liên quan</th><td>Bản đặc tả kỹ thuật theo bước: <em>5994 - Quy trình return SO Dropship của Part.md</em> (thư mục Quy trình lớn), Test Case: <em>IVC_5994_TC_v1.csv</em></td></tr>
@@ -217,7 +232,7 @@
           <li><a href="#um-b72">Bước 7.2 – GR ở trạng thái Draft</a></li>
           <li><a href="#um-b81">Bước 8.1 – Tự tạo SO Return</a></li>
           <li><a href="#um-b82">Bước 8.2 – Tự hủy GR (chưa có)</a></li>
-          <li><a href="#um-b10">Bước 10 – Hoàn tất SO Return, hủy Shipment gốc</a></li>
+          <li><a href="#um-b10">Bước 10 – Hoàn tất SO Return, xử lý Shipment gốc</a></li>
           <li><a href="#um-result">Kết quả test</a></li>
         </ol>
       </li>
@@ -229,7 +244,8 @@
           <li><a href="#um-b122">Bước 12.2 – Packing</a></li>
           <li><a href="#um-b123">Bước 12.3 – Good Issue, SO Return tự Completed</a></li>
           <li><a href="#um-b13">Bước 13 – Xác nhận tồn kho DLR giảm (chờ data sync ERP)</a></li>
-          <li><a href="#um-b14">Bước 14 – Tạo SO bán bù</a></li>
+          <li><a href="#um-b14">Bước 14 – Create Offset SO (SO bán bù)</a></li>
+          <li><a href="#um-auto">Auto-complete DO (làm nhanh Bước 12.1 → 12.3)</a></li>
           <li><a href="#um-stock-result">Kết quả test</a></li>
         </ol>
       </li>
@@ -320,7 +336,7 @@
   </div>
 
   <!-- Bước 10 -->
-  <h3 id="um-b10">1.7. Bước 10 (phần DMS) – Hoàn tất SO Return và hủy Shipment gốc <span class="role">Tự động</span></h3>
+  <h3 id="um-b10">1.7. Bước 10 (phần DMS) – Hoàn tất SO Return và xử lý Shipment gốc <span class="role">Tự động</span></h3>
   <p>Kích hoạt khi kế toán post Invoice Journal cho SO Return trên ERP (phần ERP của Bước 10); ERP gọi hook <code>Sync_InvoiceSO</code> kèm số hóa đơn trả (<code>InvoiceId</code>) và số hóa đơn gốc (<code>InvoiceId_Orig</code>). Không cần thao tác trên DMS.</p>
   <ol class="um-steps tagged">
     <li><span class="step-tag">Bước 10.a</span> Kiểm tra hook <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003lwRp2AI/view" target="_blank" rel="noopener">DH-00187225</a>: <strong>Message</strong> ghi <em>"Success: Completed Sales_Order__c … Hủy 1 Shipment gốc."</em>
@@ -329,12 +345,13 @@
     <li><span class="step-tag">Bước 10.b</span> Mở lại <strong>SO Return</strong> <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002bjWTYAY/view" target="_blank" rel="noopener">ARSO0004963</a>: thanh trạng thái đã <strong>Completed</strong>; <strong>Invoice Number</strong> = số hóa đơn ERP gửi; <strong>Original Shipment</strong> trỏ về Shipment gốc bị hủy (<a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Shipment__c/a1iWC000007X4btYAC/view" target="_blank" rel="noopener">SM-000396</a>).
       <figure class="shot"><img src="images/5994-run2/10-so-return-completed.png" alt="SO Return Completed"><figcaption>Hình 11 – Bước 10.b: SO Return Completed, có Invoice Number và Original Shipment.</figcaption></figure>
     </li>
-    <li><span class="step-tag">Bước 10.c</span> Bấm vào <strong>Original Shipment</strong> (hoặc mở <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Shipment__c/a1iWC000007X4btYAC/view" target="_blank" rel="noopener">SM-000396</a>): Shipment gốc đã chuyển sang <strong>Cancelled</strong> (trước đó là Creation). Shipment đã <strong>Completed</strong> (Đại lý nhập kho xong) thì được giữ nguyên.
+    <li><span class="step-tag">Bước 10.c</span> Bấm vào <strong>Original Shipment</strong> (hoặc mở <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Shipment__c/a1iWC000007X4btYAC/view" target="_blank" rel="noopener">SM-000396</a>): Shipment gốc <strong>chưa nhập kho</strong> đã chuyển sang <strong>Cancelled</strong> (trước đó là Creation). Shipment <strong>đã nhập kho</strong> (Completed, hoặc đã có Goods Receipt Completed) thì <strong>không bị hủy</strong>: hệ thống giữ nguyên và gắn hai chiều với Return DO (<strong>Delivery Order.Original Shipment</strong> = Shipment gốc, <strong>Shipment.Return Delivery Order</strong> = Return DO) để biết DO trả hàng này thuộc Shipment nào.
       <figure class="shot"><img src="images/5994-run2/11-shipment-cancelled.png" alt="Shipment Cancelled"><figcaption>Hình 12 – Bước 10.c: Shipment SM-000396 trạng thái Cancelled.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 10.d</span> Kiểm tra SO Dropship gốc <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002ZE8bYAG/view" target="_blank" rel="noopener">ARSO0004685</a>: <strong>không bị thay đổi</strong> (vẫn Delivery), để PO gốc và SO gốc tiếp tục dùng được (kể cả khi SO gốc còn đang Post Partial).
       <figure class="shot"><img src="images/5994-run2/13-so-goc-sau-return.png" alt="SO gốc sau return"><figcaption>Hình 13 – Bước 10.d: SO gốc vẫn ở Delivery sau khi hoàn tất SO Return.</figcaption></figure>
     </li>
+    <li><span class="step-tag">Bước 10.e</span> <strong>ERP gửi lặp</strong> hook <code>Sync_InvoiceSO</code> khi SO Return đã Completed với cùng số hóa đơn: hệ thống <strong>không đổi SO Return</strong> (Status, Invoice Number giữ nguyên) nhưng <strong>vẫn xử lý lại Shipment gốc</strong> (các bước đều lặp lại an toàn). Nhờ vậy nếu lần gửi trước chưa gắn được Shipment gốc / Return DO (ví dụ Return DO tạo sau khi SO đã Completed) thì lần gửi lặp sẽ bù. <strong>Message</strong> của hook bắt đầu bằng <em>"Skipped: …"</em> kèm kết quả xử lý Shipment.</li>
   </ol>
 
   <div class="callout warn">
@@ -364,6 +381,82 @@
 
   <h3 id="um-stock">2.1. Tổng quan, badge và điều kiện đầu vào</h3>
   <p>Áp dụng khi hàng Dropship <strong>đã được Đại lý nhập kho</strong> (đã có tồn kho tại Đại lý) và cần trả hàng. Khác với luồng Non-Stock (mục 1.5 → 1.7, hệ thống tự hủy Shipment gốc), ở luồng này <strong>Đại lý tự xuất kho trả hàng trên DMS</strong>: tạo Part Delivery Order (DO) từ SO Return, đi qua Picking, Packing, Good Issue, rồi tạo SO bán bù. Các bước đánh số tiếp theo quy trình (Bước 11 → 14); riêng Bước 12 được tách thành 12.1, 12.2, 12.3 theo đúng các màn hình thao tác trên DMS. Ảnh chụp từ môi trường <strong>Partial</strong> ngày 30/10/2026.</p>
+
+  <div class="callout note">
+    <span class="label">Từ 11/2026: DO trả hàng có Record Type riêng "DO Return Dropship"</span>
+    DO của SO Dropship Return dùng Record Type <strong>DO Return Dropship</strong> (không còn dùng <em>Dealer Parts DO</em>), để tách khỏi luồng DO bán hàng:
+    <ul>
+      <li><strong>Kho xuất (Issuing Warehouse)</strong> = kho nhập hàng của Đại lý theo Shipment gốc (ví dụ <code>SF_ITB</code>), kể cả khi hàng còn nằm ở location Temp/Waiting.</li>
+      <li><strong>Kho nhận (Receiving Warehouse)</strong> = kho của IVC trên SO gốc (ví dụ <code>DLR_ITB</code>).</li>
+      <li><strong>Không đồng bộ ERP</strong>: DMS không gửi hook <code>CreateDOPart</code> cho DO này (ERP đã tự xuất kho cho SO Return).</li>
+      <li><strong>Không tạo Shipment nhập kho</strong> khi DO chuyển In Transit / Invoiced.</li>
+      <li>Số lượng dòng DO luôn <strong>dương</strong>, có đủ Ordering Part / Receiving Part Code; DMS <strong>tự trừ tồn kho</strong> khi Parts Issue Note Completed (xem mục 2.6).</li>
+    </ul>
+  </div>
+
+  <h4 id="swim-stock">Sơ đồ toàn luồng DLR Stock (Bước 1 → 14)</h4>
+  <div class="swim-legend">
+    <span><span class="sw" style="background:#fbe3d6"></span>Thủ công (người dùng thao tác)</span>
+    <span><span class="sw" style="background:#b7e4a0"></span>Tự động (hệ thống chạy)</span>
+    <span><span class="sw" style="background:#e4d6f1"></span>Chờ ERP / data sync</span>
+  </div>
+
+  <p style="margin:4pt 0 0;"><strong>Phần A – Luồng Dropship thuận, đến khi Đại lý nhập kho (Bước 1 → 7.2)</strong></p>
+  <table class="swim">
+    <tbody>
+      <tr>
+        <th class="lane">ERP</th>
+        <td class="e"></td>
+        <td class="e"></td>
+        <td class="a"><b class="step">3. Create SO Dropship</b>ERP tạo SO Dropship từ dữ liệu DMS gửi lên</td>
+        <td class="m"><b class="step">4. Create PO Dropship</b>Dùng chức năng <em>Direct Delivery</em> trên SO</td>
+        <td class="m"><b class="step">5. Post GR PO</b>Post GR cho PO Dropship</td>
+        <td class="a"><b class="step">6. Auto Delivery</b>SO Dropship tự Delivery, tạo Packing Slip Journal<br>➔ hook <code style="font-size:6.5pt;">8_PostPacking</code></td>
+        <td class="m"><b class="step">7. Post Invoice Journal SO</b>Kế toán post invoice<br>➔ hook <code style="font-size:6.5pt;">9_PostInvoice</code></td>
+        <td class="e"></td>
+      </tr>
+      <tr>
+        <th class="lane">DMS</th>
+        <td class="m"><b class="step">1. PO.DLR</b>Đại lý lên đơn đặt hàng PO loại <em>Dropship</em></td>
+        <td class="a"><b class="step">2. SO by vendor IVC</b>PO được duyệt: tự tạo SO theo nhà cung cấp (tham chiếu PO), sync lên ERP<br>➔ hook <code>CreateSO</code></td>
+        <td class="e"></td>
+        <td class="e"></td>
+        <td class="e"></td>
+        <td class="e"></td>
+        <td class="a"><b class="step">7.1, 7.2</b>Shipment của Đại lý (đã có thông tin invoice) và GR ở trạng thái <code>Draft</code></td>
+        <td class="m"><b class="step">Nhập kho DLR</b>Đại lý nhập kho: GR <code>Completed</code>, hàng nằm ở kho/location của Đại lý</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="margin:10pt 0 0;"><strong>Phần B – Return và xuất kho trả hàng (Bước 8 → 14, Bước 10 không dùng trong luồng này)</strong></p>
+  <table class="swim">
+    <tbody>
+      <tr>
+        <th class="lane">ERP</th>
+        <td class="m"><b class="step">8. Create SO Return</b>Tạo SO Return, tham chiếu Packing Slip Journal gốc, chuyển <code>Confirmed</code><br>➔ hook <code>SO_Return</code></td>
+        <td class="m"><b class="step">9. Post Delivery</b>Post Delivery và tạo Packing Slip Journal cho SO Return<br>➔ hook <code style="font-size:6.5pt;">8_PostPacking</code></td>
+        <td class="e"></td>
+        <td class="e"></td>
+        <td class="e"></td>
+        <td class="e"></td>
+        <td class="w"><b class="step">13. ERP xuất kho</b>ERP ghi nhận xuất kho của DO, gửi tồn kho về DMS<br>➔ hook <code>InventSum</code></td>
+        <td class="e"></td>
+      </tr>
+      <tr>
+        <th class="lane">DMS</th>
+        <td class="a"><b class="step">8.1. Tự tạo SO Return</b>SO Return RT <em>SO Dropship Return</em>, <code>Open</code>, trỏ về SO gốc</td>
+        <td class="a"><b class="step">9. Nhận hook, xử lý DO</b>Chưa có Part DO: tạo <em>Return DO</em> (Part DO, qty dương, đủ Part Code). Đã có Part DO (Bước 11): chỉ chuyển DO ➔ <code>In Transit</code></td>
+        <td class="m"><b class="step">11. Tạo Part DO</b>DLR kiểm tồn kho, bấm <em>Part Delivery Order</em> trên SO Return. DO ở <code>Draft</code>; SO Return ➔ <code>Delivery</code></td>
+        <td class="m"><b class="step">12.1. Picking</b>Mark Complete ➔ New Picking List ➔ Picking PC ➔ Complete Picking. DO ➔ <code>Packing</code></td>
+        <td class="m"><b class="step">12.2. Packing</b>Create Packing List ➔ Case Number ➔ Scan ➔ Complete Packing. DO ➔ <code>Good Issue</code></td>
+        <td class="m"><b class="step">12.3. Good Issue</b>Create Goods Issue ➔ Parts Issue Note <code>Completed</code><div class="sub">Tự động: SO Return ➔ <code>Completed</code></div></td>
+        <td class="w"><b class="step">13. Tồn kho giảm</b>Chờ data sync: QoH của kho DLR giảm đúng số lượng đã xuất</td>
+        <td class="m"><b class="step">14. Tạo SO bán bù</b>Từ SO Return <code>Completed</code>, nút <em>Create Offset SO</em>. SO mới <code>Draft</code> (bấm Open để tạo ở ERP), Sales Order Ref ➔ SO Return, Original Shipment ➔ Shipment gốc</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="fn-meta" style="font-size:9.5pt;color:#555;">Cách đọc: Phần A là điều kiện đầu vào (Bước 1 → 7.2 và Đại lý nhập kho), đã được mô tả ở mục 1.1 → 1.4. Phần B là luồng DLR Stock. ERP tham gia ở Bước 8 (gửi SO Return), Bước 9 (Post Delivery, hook <code>8_PostPacking</code>) và Bước 13 (xuất kho, đồng bộ tồn kho); Bước 11 → 12.3 và Bước 14 do Đại lý thao tác trên DMS. Bước 13 không có thao tác của người dùng DMS, chỉ kiểm tra kết quả sau khi ERP đồng bộ.</p>
 
   <div class="callout note">
     <span class="label">Cách đọc badge ở tiêu đề từng bước</span>
@@ -397,7 +490,7 @@
     <li><span class="step-tag">Bước 11.d</span> Bấm <strong>Save</strong> ở cuối cửa sổ. Hệ thống tạo <strong>Delivery Order</strong> và quay lại SO Return; trạng thái SO Return chuyển sang <strong>Delivery</strong>.
       <figure class="shot"><img src="images/5994-stock/s04-so-return-delivery.png" alt="SO Return chuyển Delivery"><figcaption>Hình 18 – Bước 11.d: SO Return ARSO0004993 ở trạng thái Delivery sau khi tạo DO.</figcaption></figure>
     </li>
-    <li><span class="step-tag">Bước 11.e</span> Mở <strong>DO</strong> vừa tạo (<a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Delivery_Order__c/a0eWC000004V6zjYAC/view" target="_blank" rel="noopener">DO-20261030-2158</a>): <strong>DO-20261030-2158</strong>, Record Type <strong>Dealer Parts DO</strong>, trạng thái <strong>Draft</strong>, kho xuất DLR_INS; mục <strong>Delivery Order Item</strong> có sản phẩm <code>8200407188</code>, <strong>Delivery Qty = 2</strong>.
+    <li><span class="step-tag">Bước 11.e</span> Mở <strong>DO</strong> vừa tạo (<a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Delivery_Order__c/a0eWC000004V6zjYAC/view" target="_blank" rel="noopener">DO-20261030-2158</a>): <strong>DO-20261030-2158</strong>, Record Type <strong>DO Return Dropship</strong> (DO tạo từ SO Return), trạng thái <strong>Draft</strong>, kho xuất DLR_INS, <strong>Receiving Warehouse</strong> = kho IVC của SO gốc; mục <strong>Delivery Order Item</strong> có sản phẩm <code>8200407188</code>, <strong>Delivery Qty = 2</strong>.
       <figure class="shot"><img src="images/5994-stock/s05-do-draft.png" alt="DO Draft"><figcaption>Hình 19 – Bước 11.e: DO-20261030-2158 ở trạng thái Draft.</figcaption></figure>
     </li>
   </ol>
@@ -467,60 +560,90 @@
       <figure class="shot"><img src="images/5994-stock/s20-create-goods-issue.png" alt="Xác nhận tạo Goods Issue"><figcaption>Hình 35 – Bước 12.3.b: xác nhận tạo Goods Issue.</figcaption></figure>
       <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 36 – Parts Issue Note GIP-20261030-00001, Status = Completed, qty = 2</div><figcaption>Hình 36 – Bước 12.3.b: phiếu Goods Issue GIP-20261030-00001 đã Completed.</figcaption></figure>
     </li>
-    <li><span class="step-tag">Bước 12.3.c</span> Mở lại SO Return <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002cPdlYAE/view" target="_blank" rel="noopener">ARSO0004993</a>: thanh trạng thái đã <strong>Completed</strong> (button <strong>Mark Status as Complete</strong> chuyển xám). Menu <strong>▼</strong> có action <strong>Create SO bán bù</strong> (dùng ở Bước 14).
-      <figure class="shot"><img src="images/5994-stock/s21-so-return-completed.png" alt="SO Return Completed"><figcaption>Hình 37 – Bước 12.3.c: SO Return Completed, menu hiển thị Create SO bán bù.</figcaption></figure>
+    <li><span class="step-tag">Bước 12.3.c</span> Mở lại SO Return <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002cPdlYAE/view" target="_blank" rel="noopener">ARSO0004993</a>: thanh trạng thái đã <strong>Completed</strong> (button <strong>Mark Status as Complete</strong> chuyển xám). Menu <strong>▼</strong> có action <strong>Create Offset SO</strong> (dùng ở Bước 14).
+      <figure class="shot"><img src="images/5994-stock/s21-so-return-completed.png" alt="SO Return Completed"><figcaption>Hình 37 – Bước 12.3.c: SO Return Completed, menu hiển thị Create SO bán bù (nay đổi tên thành Create Offset SO).</figcaption></figure>
     </li>
   </ol>
 
   <!-- Bước 13 -->
   <h3 id="um-b13">2.6. Bước 13 – Xác nhận tồn kho Đại lý đã giảm <span class="role sync">Chờ data sync</span></h3>
-  <div class="callout warn">
-    <span class="label">Vì sao tồn kho chưa giảm ngay sau Goods Issue</span>
-    Với <strong>DO loại Dealer Parts DO</strong>, khi Goods Issue Completed, DMS <strong>không tự trừ tồn kho</strong> (đã chủ ý bỏ bước trừ trong <code>TriggerInventoryTransactionHandler.completedPartsIssueNote</code>). Số tồn kho trên DMS chỉ đổi khi <strong>ERP ghi nhận xuất kho và gửi dữ liệu tồn kho (hook <code>InventSum</code>) về DMS</strong>. Vì vậy ngay sau Bước 12.3, tồn kho DLR_INS <strong>vẫn là 10</strong>, và đó là bình thường.
+  <div class="callout note">
+    <span class="label">Tồn kho giảm ở đâu</span>
+    Với DO loại <strong>DO Return Dropship</strong>, khi Parts Issue Note chuyển <strong>Completed</strong> thì <strong>DMS tự trừ tồn kho</strong> (Location Inventory) đúng location đã Picking, ví dụ tồn <code>SF_ITB_Temp</code> giảm 100 → 0. Đây là khác biệt so với <em>Dealer Parts DO</em> (DMS không tự trừ, chỉ đổi khi ERP gửi hook <code>InventSum</code>). Số liệu từ ERP gửi về qua <code>InventSum</code> vẫn là nguồn đối chiếu cuối cùng; nếu ERP chưa ghi nhận xuất kho thì chưa có hook cho item/kho này.
   </div>
   <ol class="um-steps tagged">
-    <li><span class="step-tag">Bước 13.a</span> <span class="role sync">Chờ data sync</span> Chờ ERP ghi nhận xuất kho của DO và đẩy tồn kho về DMS. Chưa có dữ liệu đồng bộ thì chưa làm được các bước sau.</li>
+    <li><span class="step-tag">Bước 13.a</span> <span class="role sync">Chờ data sync</span> Tồn kho DMS đã giảm ngay khi Goods Issue Completed (xem callout trên). Phần còn lại là chờ ERP ghi nhận xuất kho và đẩy tồn kho về DMS để đối chiếu.</li>
     <li><span class="step-tag">Bước 13.b</span> Kiểm tra hook tồn kho: mở <strong>D365FO_Hook</strong> mới nhất có <strong>Function = InventSum</strong> của item <code>8200407188</code>, kho <code>DLR_INS</code> (trong Input: <code>InventLocationId</code> = DLR_INS, <code>ItemId</code> = 8200407188, <code>AvailPhysical</code> = 8). <strong>isRun</strong> và <strong>isSuccess</strong> được tích, <strong>Message</strong> ghi <em>"D365FO InventSum temp Created/Updated Successfully"</em>. Hook InventSum của item/kho khác (ví dụ DLR_ITB) <strong>không phải</strong> kết quả của DO này.</li>
     <li><span class="step-tag">Bước 13.c</span> Vào lại <strong>Warehouse → DLR_INS → Warehouse Inventories</strong>, mở sản phẩm <code>8200407188</code>: tồn kho (QoH) giảm từ <strong>10</strong> xuống <strong>8</strong> (đúng 2 cái xuất trả).
       <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 38 – Tồn kho DLR_INS sau khi ERP đồng bộ (kỳ vọng QoH = 8). Hiện tại, chưa đồng bộ, vẫn QoH = 10.</div><figcaption>Hình 38 – Bước 13.c: tồn kho kho DLR_INS sau khi data sync về.</figcaption></figure>
     </li>
   </ol>
-  <div class="callout bad">
-    <span class="label">Trạng thái hiện tại (30/10/2026)</span>
-    Bước 13 <strong>chưa chốt</strong>: sau khi Goods Issue Completed, tồn kho DLR_INS còn 10 và chưa có hook InventSum của item 8200407188 / kho DLR_INS trên Partial. Cần ERP xuất kho và gửi InventSum, sau đó cập nhật kết quả vào UM này.
+  <div class="callout warn">
+    <span class="label">Lưu ý đối chiếu với ERP (02/11/2026)</span>
+    Kiểm tra trên Partial: các hook <code>InventSum</code> sau khi Goods Issue đều trả về rỗng (<em>"Success but no new data"</em>) vì ERP chưa có thay đổi tồn nào của item này. Cần người dùng ERP ghi nhận xuất kho cho SO Return thì mới có dữ liệu đối chiếu.
   </div>
 
   <!-- Bước 14 -->
-  <h3 id="um-b14">2.7. Bước 14 – Tạo SO bán bù từ SO Return đã Completed <span class="role">DLR · Thủ công</span></h3>
-  <p>Chỉ phụ thuộc SO Return đã <strong>Completed</strong> (Bước 12.3), <strong>không phải chờ</strong> tồn kho đồng bộ ở Bước 13.</p>
+  <h3 id="um-b14">2.7. Bước 14 – Create Offset SO (SO bán bù) từ SO Return đã Completed <span class="role">DLR · Thủ công</span></h3>
+  <p>Chỉ phụ thuộc SO Return đã <strong>Completed</strong> (Bước 12.3), <strong>không phải chờ</strong> tồn kho đồng bộ ở Bước 13. Nút <strong>Create Offset SO</strong> có trên trang SO của <strong>AFS</strong> (và trên SO Return); người dùng chọn <strong>SO Return</strong> và <strong>Shipment return</strong> (Shipment gốc) rồi tạo SO bán bù.</p>
   <ol class="um-steps tagged">
-    <li><span class="step-tag">Bước 14.a</span> Mở SO Return đã <strong>Completed</strong>, mở menu <strong>▼</strong> trên thanh thao tác, chọn <strong>Create SO bán bù</strong>. Cửa sổ <strong>Tạo SO Bán Bù</strong> hiển thị SO Return, trạng thái Completed, danh sách sản phẩm: <code>8200407188</code>, <strong>SL Return = 2</strong> (hiển thị số dương), đơn giá 500000, <strong>SL bán bù</strong> mặc định 2 (tối đa bằng SL Return), dòng đã được tích chọn sẵn.
-      <figure class="shot"><img src="images/5994-stock/s22-ban-bu-modal.png" alt="Cửa sổ Tạo SO Bán Bù"><figcaption>Hình 39 – Bước 14.a: cửa sổ Tạo SO Bán Bù.</figcaption></figure>
+    <li><span class="step-tag">Bước 14.a</span> Mở SO (SO Return đã Completed hoặc SO bất kỳ trên giao diện AFS), mở thanh thao tác hoặc menu <strong>▼</strong>, chọn <strong>Create Offset SO</strong>. Cửa sổ hiển thị:
+      <ul>
+        <li><strong>SO Return</strong>: chỉ liệt kê SO Dropship Return <strong>đã Completed và cùng Purchase Order</strong> với SO đang mở nút (mở từ SO Return thì lấy PO của chính nó và chọn sẵn). SO chưa có PO, hoặc PO chưa có SO Return Completed, thì form báo không có SO Return nào.</li>
+        <li><strong>Shipment return (Shipment gốc)</strong>: các Shipment của SO gốc, kể cả Shipment đã Cancelled (ví dụ <code>SM-000399 (Cancelled) - SF_ITB</code>); Shipment đã gắn với Return DO của SO Return được chọn sẵn.</li>
+        <li>Khung thông tin: SO Return, <strong>SO gốc</strong>, <strong>Warehouse</strong> và <strong>ERP Default Dimension</strong> của SO gốc.</li>
+        <li>Bảng sản phẩm: mã SP, SL Return (số dương), <strong>SL bán bù</strong> (mặc định bằng SL Return, tối đa SL Return), <strong>Đơn giá (SO gốc)</strong>.</li>
+      </ul>
+      <figure class="shot"><img src="images/5994-offset/o01-form-create-offset-so.png" alt="Cửa sổ Create Offset SO"><figcaption>Hình 39 – Bước 14.a: cửa sổ Create Offset SO (SO Return ARSO0004996, Shipment gốc SM-000399, đơn giá lấy theo SO gốc).</figcaption></figure>
     </li>
-    <li><span class="step-tag">Bước 14.b</span> Chọn sản phẩm cần bán bù, chỉnh <strong>SL bán bù</strong> nếu cần, nhấn <strong>Tạo SO Bán Bù</strong>. Hệ thống tạo Sales Order mới và chuyển sang trang SO đó.</li>
-    <li><span class="step-tag">Bước 14.c</span> Kiểm tra SO mới <strong>ARSO0004995</strong>: Record Type <strong>DLR Part Sales Order</strong>, trạng thái <strong>Open</strong>; Đại lý (NISU) và Purchase Order (PSPO0001383) kế thừa từ SO Return; <strong>Sales Order Ref</strong> trỏ về SO Return gốc ARSO0004993; dòng item <code>8200407188</code> có <strong>số lượng dương = 2</strong>. Người dùng tiếp tục quy trình xử lý SO bình thường.
-      <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 40 – SO bán bù ARSO0004995 (Open, Sales Order Ref = ARSO0004993, item 8200407188 SL +2)</div><figcaption>Hình 40 – Bước 14.c: SO bán bù ARSO0004995 vừa tạo.</figcaption></figure>
+    <li><span class="step-tag">Bước 14.b</span> Chọn sản phẩm cần bán bù, chỉnh <strong>SL bán bù</strong> nếu cần, nhấn <strong>Create Offset SO</strong>. Hệ thống tạo Sales Order mới và chuyển sang trang SO đó.</li>
+    <li><span class="step-tag">Bước 14.c</span> Kiểm tra SO mới (ví dụ <strong>ARSO0005008</strong>): Record Type <strong>DLR Part Sales Order</strong>, trạng thái <strong>Draft</strong> (chưa có trên ERP); <strong>Warehouse</strong> và <strong>ERP Default Dimension</strong> giống SO gốc; Đại lý, Purchase Order lấy theo SO gốc; <strong>Sales Order Ref</strong> trỏ về SO Return; <strong>Original Shipment</strong> trỏ về Shipment gốc; dòng item có <strong>số lượng dương</strong>, <strong>đơn giá, thuế (VAT), thành tiền giống dòng SO gốc</strong> (thành tiền quy đổi theo SL bán bù; Discount Amount tính trên mỗi đơn vị nên giữ nguyên, không quy đổi).
+      <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 40 – SO bán bù ARSO0005008 (Draft, Warehouse DLR_ITB, Original Shipment SM-000399, đơn giá 6.939.000)</div><figcaption>Hình 40 – Bước 14.c: Offset SO ARSO0005008 vừa tạo.</figcaption></figure>
     </li>
+    <li><span class="step-tag">Bước 14.d</span> Kiểm tra xong, bấm <strong>Open</strong> trên SO bán bù: lúc này SO mới được tạo ở ERP (hook <code>CreateSO</code>). Từ đó xử lý SO như SO thông thường.</li>
   </ol>
+  <div class="callout warn">
+    <span class="label">Điều kiện và lỗi thường gặp</span>
+    Chỉ chọn được SO Return <strong>đã Completed</strong>. Nếu SO gốc không có dòng cho sản phẩm đang bán bù (không khớp theo Product, cũng không khớp theo mã sản phẩm), hệ thống báo <em>"SO gốc … không có line cho sản phẩm … Không thể lấy đơn giá"</em> và không tạo SO.
+  </div>
+
+  <!-- Auto-complete DO -->
+  <h3 id="um-auto">2.8. Auto-complete DO (làm nhanh Bước 12.1 → 12.3) <span class="role">DLR · Thủ công</span></h3>
+  <p>Thay vì đi từng bước Picking, Packing, Good Issue, người dùng có thể bấm <strong>Auto-complete DO</strong> trên DO. Nút này hoạt động với <strong>DO Return Dropship</strong> (và Customer Part DO), khi DO đang ở <strong>Draft</strong> hoặc <strong>Good Issue</strong> (DO do ERP hook <code>8_PostPacking</code> tạo thường đã ở Good Issue).</p>
+  <ol class="um-steps tagged">
+    <li><span class="step-tag">Auto.a</span> Mở DO trả hàng (ví dụ <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Delivery_Order__c/a0eWC000004VCtpYAG/view" target="_blank" rel="noopener">DO-20261030-2159</a>), kiểm tra Record Type <strong>DO Return Dropship</strong>, kho xuất và kho nhận đúng (Issuing = kho Đại lý, Receiving = kho IVC).</li>
+    <li><span class="step-tag">Auto.b</span> Nhấn <strong>Auto-complete DO</strong>. Hệ thống tự: tạo Picking List (lấy hàng từ location có tồn, <strong>kể cả location Waiting/Temp</strong> của Đại lý) và hoàn tất; tạo và hoàn tất Parts Issue Note; trừ tồn kho location đã lấy; đưa DO về <strong>Good Issue</strong>; SO Return tự Completed.</li>
+    <li><span class="step-tag">Auto.c</span> Kiểm tra kết quả ở tab Related của DO: <strong>Picking List</strong> (ví dụ PICK-0357, Complete) và <strong>Parts Issue Note</strong> (ví dụ GIP-20261030-00006, Completed, số lượng 100). <strong>Không có Packing List</strong> vì Auto-complete bỏ qua bước đóng gói (Packed Quantity để trống); đây là thiết kế của nút này.</li>
+  </ol>
+  <div class="callout warn">
+    <span class="label">Điều kiện để Auto-complete chạy</span>
+    DO phải có kho xuất; <strong>chưa có</strong> Picking List và <strong>chưa có</strong> Parts Issue Note (đã có thì báo "đã có Picking List / phiếu xuất kho" và phải làm tiếp theo từng bước). DO loại khác (ví dụ Dealer Parts DO của SO thường) bị từ chối với thông báo <em>"Chỉ áp dụng cho Delivery Order Customer Part hoặc Part DO của SO Dropship Return"</em>.
+  </div>
 
   <!-- Kết quả DLR Stock -->
-  <h3 id="um-stock-result">2.8. Kết quả test luồng DLR Stock (Partial, 30/10/2026)</h3>
+  <h3 id="um-stock-result">2.9. Kết quả test luồng DLR Stock (Partial, 30/10/2026; bổ sung 02/11/2026)</h3>
   <table class="grid">
     <thead><tr><th class="c" style="width:12%">Bước</th><th style="width:34%">Kiểm tra</th><th class="c" style="width:16%">Kết quả</th><th>Ghi chú</th></tr></thead>
     <tbody>
       <tr><td class="c">Đầu vào</td><td>SO Return được ERP gửi qua hook <code>SO_Return</code></td><td class="c">Đạt (hook chèn thủ công)</td><td>DH-00188565: ARSO0004993, Open. <span class="role erp">Chờ webhook ERP</span> khi chạy thật.</td></tr>
       <tr><td class="c">11.a</td><td>Tồn kho DLR_INS trước xuất</td><td class="c">Đạt</td><td>QoH = 10</td></tr>
-      <tr><td class="c">11.b–11.e</td><td>Tạo Part DO từ SO Return</td><td class="c">Đạt</td><td>DO-20261030-2158, Dealer Parts DO, Draft, kho DLR_INS, SL 2; SO Return sang Delivery</td></tr>
+      <tr><td class="c">11.b–11.e</td><td>Tạo Part DO từ SO Return</td><td class="c">Đạt</td><td>DO-20261030-2158, Draft, kho DLR_INS, SL 2; SO Return sang Delivery (test ngày 30/10, lúc đó DO còn là Dealer Parts DO; từ 11/2026 là DO Return Dropship)</td></tr>
       <tr><td class="c">12.1</td><td>Picking</td><td class="c">Đạt</td><td>PICK-0350 Complete, Picked Qty = 2</td></tr>
       <tr><td class="c">12.2</td><td>Packing</td><td class="c">Đạt</td><td>PACK-00256 Complete, 1 thùng, Packed Qty = 2</td></tr>
       <tr><td class="c">12.3</td><td>Good Issue, SO Return tự Completed</td><td class="c">Đạt</td><td>DO Good Issue; GIP-20261030-00001 Completed (qty 2); ARSO0004993 Completed</td></tr>
-      <tr><td class="c">13</td><td>Tồn kho DLR_INS giảm 10 → 8</td><td class="c"><span class="role sync">Chờ data sync</span></td><td>DMS không tự trừ với Dealer Parts DO; chờ ERP gửi InventSum. Hiện QoH vẫn = 10.</td></tr>
-      <tr><td class="c">14</td><td>Tạo SO bán bù</td><td class="c">Đạt</td><td>ARSO0004995: DLR Part Sales Order, Open, Sales Order Ref = ARSO0004993, item 8200407188 SL +2</td></tr>
+      <tr><td class="c">13</td><td>Tồn kho DLR_INS giảm 10 → 8</td><td class="c"><span class="role sync">Chờ data sync</span></td><td>Test 30/10 với Dealer Parts DO: DMS không trừ, QoH vẫn 10. Từ 11/2026 DO Return Dropship được DMS trừ khi Goods Issue Completed; ERP chưa gửi InventSum cho item này.</td></tr>
+      <tr><td class="c">14</td><td>Tạo SO bán bù</td><td class="c">Đạt</td><td>ARSO0004995: DLR Part Sales Order, Open, Sales Order Ref = ARSO0004993, item 8200407188 SL +2 (test 30/10, bản cũ)</td></tr>
+      <tr><td class="c" colspan="4"><strong>Bổ sung 02/11/2026 (Partial và QA)</strong></td></tr>
+      <tr><td class="c">11, 8</td><td>Return DO có RT DO Return Dropship, kho xuất / kho nhận đúng</td><td class="c">Đạt</td><td>DO-20261030-2159: RT DO Return Dropship, Issuing = SF_ITB, Receiving = DLR_ITB (chạy lại hook <code>8_PostPacking</code>)</td></tr>
+      <tr><td class="c">11</td><td>DO Return Dropship không sync ERP, không tạo Shipment nhập kho</td><td class="c">Đạt</td><td>Test tự động xác nhận không sinh hook CreateDOPart</td></tr>
+      <tr><td class="c">Auto</td><td>Auto-complete DO cho DO Return Dropship (Draft và Good Issue)</td><td class="c">Đạt</td><td>PICK-0357 Complete, GIP-20261030-00006 Completed (100); không có Packing List; test tự động xác nhận tồn location giảm</td></tr>
+      <tr><td class="c">14</td><td>Create Offset SO</td><td class="c">Đạt</td><td>ARSO0005008: Draft, Warehouse DLR_ITB, ERP Default Dimension SPP-AFS---SPP--02, Original Shipment SM-000399, đơn giá 6.939.000, VAT08, thành tiền 693.900.000 giống SO gốc</td></tr>
+      <tr><td class="c">10.e</td><td>ERP gửi lặp Sync_InvoiceSO khi SO đã Completed</td><td class="c">Đạt</td><td>Test tự động: SO không đổi nhưng vẫn gắn Shipment gốc đã nhập kho</td></tr>
     </tbody>
   </table>
 
   <footer class="doc-foot">
-    Ticket 5994 · Return đơn Dropship Part (chưa nhập kho DLR &amp; DLR Stock) · Phiên bản 2026-10-30
+    Ticket 5994 · Return đơn Dropship Part (chưa nhập kho DLR &amp; DLR Stock) · Phiên bản 2026-11-02
   </footer>
 
 </main>
