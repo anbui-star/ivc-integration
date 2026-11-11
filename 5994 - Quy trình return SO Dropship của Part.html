@@ -215,10 +215,10 @@
 
   <table class="meta">
     <tr><th>Ticket</th><td>5994 – Quy trình return SO Dropship của Part</td></tr>
-    <tr><th>Môi trường</th><td>Partial và QA (Sandbox) – API đã triển khai; kiểm chứng trên QA ngày 23/10/2026 và <strong>test toàn luồng trên Partial ngày 28/10/2026</strong>. <strong>Cập nhật 02/11/2026</strong>: Record Type <em>DO Return Dropship</em>, Auto-complete DO, <em>Create Offset SO</em> và xử lý ERP gửi lặp đã triển khai trên <strong>Partial và QA</strong></td></tr>
-    <tr><th>Đối tượng</th><td><strong>Purchase Order</strong> (loại Dropship), <strong>Sales Order</strong> (Record Type <strong>Part Sales Order</strong> và <strong>SO Dropship Return</strong>), <strong>Delivery Order</strong> (Part DO), <strong>Shipment</strong> (Dealer), <strong>Inventory Transaction</strong> (Goods Receipt, Goods Issue), <strong>D365FO Hook</strong></td></tr>
-    <tr><th>Trường hợp</th><td><strong>1. Return Dropship khi Đại lý chưa nhập kho xong</strong>: Shipment của Đại lý chưa <code>Completed</code>.<br><strong>2. Return Dropship khi Đại lý đã nhập kho (DLR Stock)</strong>: Tạo Part DO từ SO Return, Post Update DO (Pick, Pack, Goods Issue), trừ tồn kho Đại lý và tạo SO bán bù.</td></tr>
-    <tr><th>Tài liệu liên quan</th><td>Bản đặc tả kỹ thuật theo bước: <em>5994 - Quy trình return SO Dropship của Part.md</em> (thư mục Quy trình lớn), Test Case: <em>IVC_5994_TC_v1.csv</em></td></tr>
+    <tr><th>Môi trường</th><td>Partial (Sandbox). Luồng Non-Stock: chạy lại toàn bộ ngày <strong>11/11/2026</strong>. Luồng DLR Stock: test ngày 30/10 và 02/11/2026.</td></tr>
+    <tr><th>Đối tượng</th><td><strong>Purchase Order</strong> (loại Dropship), <strong>Sales Order</strong> (Record Type <strong>Part Sales Order</strong> và <strong>SO Dropship Return</strong>), <strong>Delivery Order</strong> (DO Return Dropship), <strong>Shipment</strong> (Dealer), <strong>Inventory Transaction</strong> (Goods Receipt, Goods Issue), <strong>D365FO Hook</strong></td></tr>
+    <tr><th>Trường hợp</th><td><strong>1. Return khi Đại lý chưa nhập kho xong (Non-Stock)</strong>: Shipment của Đại lý chưa <code>Completed</code>, hệ thống tự hủy Shipment gốc và Return DO.<br><strong>2. Return khi Đại lý đã nhập kho (DLR Stock)</strong>: tạo DO từ SO Return, Pick, Pack, Goods Issue, trừ tồn kho Đại lý và tạo SO bán bù.</td></tr>
+    <tr><th>Tài liệu liên quan</th><td>Đặc tả kỹ thuật: <em>5994 - Quy trình return SO Dropship của Part.md</em>; test case: <em>IVC_5994_TC_DLR Non Stock_v1.csv</em> (Non-Stock) và <em>IVC_5994_TC_v1.csv</em> (DLR Stock)</td></tr>
   </table>
 
   <nav class="toc" aria-label="Mục lục">
@@ -226,14 +226,23 @@
     <ol>
       <li><a href="#um">Luồng DLR Non-Stock (Đại lý chưa nhập kho)</a>
         <ol type="a">
-          <li><a href="#um-b1">Bước 1 – Đại lý lên PO Dropship</a></li>
-          <li><a href="#um-b2">Bước 2 – Tự tạo SO theo nhà cung cấp</a></li>
-          <li><a href="#um-b71">Bước 7.1 – Tự tạo Shipment cho Đại lý</a></li>
-          <li><a href="#um-b72">Bước 7.2 – GR ở trạng thái Draft</a></li>
-          <li><a href="#um-b81">Bước 8.1 – Tự tạo SO Return</a></li>
-          <li><a href="#um-b82">Bước 8.2 – Tự hủy GR (chưa có)</a></li>
-          <li><a href="#um-b10">Bước 10 – Hoàn tất SO Return, xử lý Shipment gốc</a></li>
-          <li><a href="#um-result">Kết quả test</a></li>
+          <li><a href="#um-dms-erp">Bảng đối chiếu bước DMS và ERP theo test case</a></li>
+          <li><a href="#um-tc-001-01">TC-001-01 – Tạo PO, 1 vendor</a></li>
+          <li><a href="#um-tc-001-02">TC-001-02 – Tạo PO, 2 vendor</a></li>
+          <li><a href="#um-tc-002-01">TC-002-01 – Tạo SO, 1 vendor</a></li>
+          <li><a href="#um-tc-002-02">TC-002-02 – Tạo SO, 2 vendor</a></li>
+          <li><a href="#um-tc-003-01">TC-003-01 – Tạo SO lên ERP, 1 vendor</a></li>
+          <li><a href="#um-tc-003-02">TC-003-02 – Tạo SO lên ERP, 2 vendor</a></li>
+          <li><a href="#um-tc-004">TC-004 – Post invoice Journal SO</a></li>
+          <li><a href="#um-tc-005">TC-005 – Tạo SM</a></li>
+          <li><a href="#um-tc-006">TC-006 – Tạo SO Return trên ERP</a></li>
+          <li><a href="#um-tc-007">TC-007 – Tạo SO Return trên DMS</a></li>
+          <li><a href="#um-tc-008">TC-008 – Post Delivery, Packing Slip, Invoice</a></li>
+          <li><a href="#um-tc-009">TC-009 – Tạo DO</a></li>
+          <li><a href="#um-tc-010">TC-010 – Cancel SM và DO</a></li>
+          <li><a href="#um-tc-011">TC-011 – Completed SO Return</a></li>
+          <li><a href="#um-tc-012">TC-012 – Tạo SO bán bù</a></li>
+          <li><a href="#um-ba">Phần chưa làm</a></li>
         </ol>
       </li>
       <li><a href="#stock">Luồng DLR Stock (Đại lý đã nhập kho)</a>
@@ -255,132 +264,202 @@
   <!-- ============ 9 ============ -->
   <h2 id="um" class="page-break">1. Luồng DLR Non-Stock (Đại lý chưa nhập kho)</h2>
 
-  <p>Hướng dẫn theo <strong>từng bước của quy trình ERP – DMS</strong> (đánh số bước 1 → 10), chỉ gồm các bước diễn ra trên <strong>DMS</strong>. Mỗi thao tác mang nhãn dạng <span class="step-tag">Bước 8.1.a</span>: số đứng trước là bước trong quy trình, chữ cái là thao tác con trong bước đó. Ảnh chụp từ môi trường <strong>Partial</strong> ngày 28/10/2026, giao diện tiếng Anh của tài khoản quản trị. Phần lớn các bước là <strong>tự động</strong>: người dùng DMS chỉ cần <strong>kiểm tra</strong> kết quả.</p>
+  <h3 id="um-dms-erp">Bảng đối chiếu bước DMS và ERP theo test case (IVC_5994_TC_DLR Non Stock_v1.csv)</h3>
+  <p>Mỗi test case trong file CSV được tách thành các bước thực hiện trên <strong>DMS</strong> và trên <strong>ERP</strong>. <em>(thật)</em> là hook DMS → ERP chạy thật; <em>(giả lập)</em> là webhook ERP → DMS tạo theo mẫu hook cũ (lần chạy 11/11/2026, Partial). Link hook trỏ tới bản ghi D365FO_Hook trên Partial.</p>
+  <table class="grid">
+    <thead><tr><th style="width:55%">DMS</th><th style="width:45%">ERP</th></tr></thead>
+    <tbody>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-001-01</span> Tạo PO – DLRs tự tạo PO trên DMS (chỉ 1 vendor)</td></tr>
+      <tr><td><ol style="margin:0;padding-left:18px;"><li>Vào DLR → Purchase Orders → New, Record Type = <strong>DLR Purchase Order</strong>.</li><li>Chọn Priority = Normal, PO Type = <strong>Dropship</strong>.</li><li>Thêm các sản phẩm thuộc cùng một vendor (đủ MOQ của NCC).</li><li>Submit for Approval và Approve đến trạng thái <strong>Approved</strong> (PSPO0001592).</li></ol></td><td><span style="color:#777;">Không có thao tác trên ERP</span></td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-001-02</span> Tạo PO – DLRs tự tạo PO trên DMS lớn hơn 1 vendor (2 vendor)</td></tr>
+      <tr><td><ol style="margin:0;padding-left:18px;"><li>Tạo PO DLR Purchase Order, Priority = Normal, PO Type = Dropship.</li><li>Thêm sản phẩm thuộc hai vendor khác nhau.</li><li>Submit for Approval và Approve.</li></ol><em>Lần chạy 11/11/2026 chưa chạy kịch bản 2 vendor.</em></td><td><span style="color:#777;">Không có thao tác trên ERP</span></td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-002-01</span> Tạo SO – Hệ thống tạo SO trên DMS chỉ 1 vendor</td></tr>
+      <tr><td><ol style="margin:0;padding-left:18px;"><li>Mở PO 1 vendor đã Approved, kiểm tra SO tự tạo (ARSO0005713).</li><li>Kiểm tra liên kết PO, vendor, sản phẩm.</li><li>Gắn/kiểm tra <strong>ERP Default Dimension</strong> (SPP-AFS---SPP--02).</li><li>Chuyển SO sang <strong>Open</strong>.</li></ol></td><td><span style="color:#777;">Không có thao tác trên ERP</span></td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-002-02</span> Tạo SO – Hệ thống tạo SO trên DMS lớn hơn 1 vendor (2 vendor)</td></tr>
+      <tr><td><ol style="margin:0;padding-left:18px;"><li>Mở PO 2 vendor đã Approved, kiểm tra các SO tự tạo (mỗi vendor một SO).</li><li>Đối chiếu vendor và sản phẩm của từng SO với PO.</li><li>Gắn/kiểm tra ERP Default Dimension, chuyển các SO sang Open.</li></ol><em>Chưa chạy 11/11/2026.</em></td><td><span style="color:#777;">Không có thao tác trên ERP</span></td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-003-01</span> Tạo SO – Tự động tạo SO dropship lên ERP (1 vendor)</td></tr>
+      <tr><td><ol style="margin:0;padding-left:18px;"><li>SO Open → DMS tạo hook <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trUz2AI/view" target="_blank" rel="noopener">DH-00198496</a> (<code>CreateSO</code>) gửi ERP <em>(thật)</em>.</li><li>Nhận hook phản hồi <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trWb2AI/view" target="_blank" rel="noopener">DH-00198497</a> (<code>Sync_ResultSO</code>), SO có ERP Sales Order <strong>ARSO0034822</strong>.</li></ol></td><td><ol style="margin:0;padding-left:18px;"><li>Nhận dữ liệu CreateSO vào bảng tạm, tạo <strong>SO Dropship</strong> trên ERP.</li><li>Gửi <code>Sync_ResultSO</code> về DMS kèm SalesId <em>(thật)</em>.</li></ol></td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-003-02</span> Tạo SO – Tự động tạo SO dropship lên ERP (2 vendor)</td></tr>
+      <tr><td>Mỗi SO Open sinh một hook <code>CreateSO</code> gửi ERP, nhận một hook <code>Sync_ResultSO</code> cho mỗi SO. <em>Chưa chạy 11/11/2026.</em></td><td>Tạo 2 SO Dropship trên ERP và trả SalesId cho từng SO.</td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-004</span> Post invoice Journal SO – Post thủ công 1 SO trên ERP</td></tr>
+      <tr><td><span style="color:#777;">Không có thao tác trên DMS</span> (kết quả xem ở TC-005).</td><td><ol style="margin:0;padding-left:18px;"><li>SO Dropship đã đồng bộ lên ERP; người dùng ERP <strong>post packing slip</strong> và <strong>post Invoice Journal</strong> thủ công.</li><li>Lần chạy này chia 2 đợt giao: ARPS9900101 (8025030032 x1, 8025030033 x1) và ARPS9900102 (8025030035 x1, 8025030038 x1) <em>(giả lập)</em>.</li></ol></td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-005</span> Tạo SM – Tự động tạo SM khi hoàn tất Post Invoice Journal SO trên ERP</td></tr>
+      <tr><td><ol style="margin:0;padding-left:18px;"><li>Nhận hook <code>8_PostPacking</code> (SO_Type = DropShip) <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trYD2AY/view" target="_blank" rel="noopener">DH-00198498</a>, <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trbR2AQ/view" target="_blank" rel="noopener">DH-00198500</a> → tạo <strong>2 Shipment</strong> SM-000418, SM-000419 <em>(giả lập)</em>.</li><li>Nhận hook <code>9_PostInvoice</code> <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trd32AA/view" target="_blank" rel="noopener">DH-00198501</a>, <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trgH2AQ/view" target="_blank" rel="noopener">DH-00198503</a> → tạo Invoice, gắn đúng hóa đơn vào Shipment có items khớp (1 hóa đơn = 1 SM), lưu <strong>ERP Invoice Id</strong>.</li><li>Nhận hook <code>Sync_InvoiceSO</code> (DropShip) <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003tref2AA/view" target="_blank" rel="noopener">DH-00198502</a>, <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trht2AA/view" target="_blank" rel="noopener">DH-00198504</a> (không ghi chéo sang SM khác).</li><li>Mở SO → danh sách Shipment: Shipment liên kết đúng SO, invoice, sản phẩm, số lượng.</li></ol></td><td><ol style="margin:0;padding-left:18px;"><li>Hoàn tất <strong>Post Invoice Journal</strong> của SO Dropship.</li><li>Gửi hook <code>8_PostPacking</code> (mỗi packing slip), <code>9_PostInvoice</code> (mỗi hóa đơn), <code>Sync_InvoiceSO</code> (<code>SO_Type</code> = DropShip, <code>InvoiceId</code>) về DMS <em>(giả lập)</em>.</li></ol></td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-006</span> Tạo SO Return trên ERP – ERP thực hiện tạo manual 1 SO Return</td></tr>
+      <tr><td><span style="color:#777;">Không có thao tác trên DMS</span>.</td><td><ol style="margin:0;padding-left:18px;"><li>SO gốc (ARSO0034822) đã hoàn thành trên ERP.</li><li>Tạo thủ công <strong>SO Return</strong> tham chiếu SO gốc (giả lập ARSO9900201, trả hóa đơn ARIN9900101: 8025030032 x1, 8025030033 x1) <em>(giả lập)</em>.</li></ol></td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-007</span> Tạo SO Return trên DMS – Tự động đồng bộ SO Return từ ERP xuống DMS</td></tr>
+      <tr><td><ol style="margin:0;padding-left:18px;"><li>Nhận hook <code>SO_Return</code> <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trjV2AQ/view" target="_blank" rel="noopener">DH-00198505</a> → tạo <strong>SO Return</strong> (RT SO Dropship Return) ARSO0005714, tham chiếu SO gốc, kế thừa PO, 2 dòng số lượng âm.</li><li>Trên DMS tìm SO Return theo mã ERP (ARSO9900201).</li></ol></td><td><ol style="margin:0;padding-left:18px;"><li>Xác nhận SO Return đã tạo xong trên ERP, tham chiếu đúng giao dịch gốc.</li><li>Gửi hook <code>SO_Return</code> về DMS <em>(giả lập)</em>.</li></ol></td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-008</span> Post Delivery, tạo Packing Slip Journal và Post Invoice Journal (SO Return)</td></tr>
+      <tr><td><ol style="margin:0;padding-left:18px;"><li>Nhận hook <code>8_PostPacking</code> (SO_Type = SO_Return) <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trl72AA/view" target="_blank" rel="noopener">DH-00198506</a> (ARPS9900201).</li><li>Tự sinh <strong>Return DO</strong> DO-20261111-3424 (RT DO Return Dropship) ở <strong>Draft</strong>, kèm DO items (chưa tìm được SM gốc nên vẫn sinh DO).</li></ol></td><td><ol style="margin:0;padding-left:18px;"><li>SO Return đã đồng bộ về DMS và có GR.</li><li>Người dùng ERP <strong>Post Delivery</strong>, tạo <strong>Packing Slip Journal</strong> cho SO Return.</li><li>Gửi hook <code>8_PostPacking</code> (SO_Return) về DMS <em>(giả lập)</em>.</li></ol></td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-009</span> Tạo DO – DMS tự động sinh DO khi Post Packing Slips trên ERP</td></tr>
+      <tr><td><ol style="margin:0;padding-left:18px;"><li>Vào SO Return → tab Delivery Order.</li><li>Kiểm tra DO vừa tạo ở trạng thái <strong>Draft</strong>.</li><li>Kiểm tra DO đã có <strong>DO items</strong> (2 dòng).</li></ol></td><td><span style="color:#777;">Không có thao tác trên ERP</span></td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-010</span> Cancel SM và DO – Tự động Cancel SM gốc & DO khi SO Return nhận tín hiệu post invoice của đơn Return</td></tr>
+      <tr><td><ol style="margin:0;padding-left:18px;"><li>Nhận hook <code>Sync_InvoiceSO</code> (SO_Return, <code>InvoiceId_Orig</code> = ARIN9900101) <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003troL2AQ/view" target="_blank" rel="noopener">DH-00198508</a>.</li><li>Đối chiếu <code>InvoiceId_Orig</code> với <strong>ERP Invoice Id</strong> của Shipment → gắn Original Shipment = SM-000418.</li><li>Shipment gốc chưa Completed → <strong>Cancel SM-000418</strong> (chỉ đúng 1 SM; SM-000419 giữ nguyên).</li><li>Cancel Return DO DO-20261111-3424.</li><li>Mở SO Return, kiểm tra Shipment gốc và DO đã Cancelled.</li></ol></td><td><ol style="margin:0;padding-left:18px;"><li>Kế toán <strong>post Invoice Journal</strong> cho SO Return.</li><li>Gửi hook <code>Sync_InvoiceSO</code> (SO_Type = SO_Return, <code>InvoiceId</code> = ARCN9900201, <code>InvoiceId_Orig</code> = ARIN9900101) về DMS <em>(giả lập)</em>.</li></ol></td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-011</span> Completed SO Return – Tự động Completed SO Return khi Post Invoice Journal trên ERP</td></tr>
+      <tr><td><ol style="margin:0;padding-left:18px;"><li>Cùng hook <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003troL2AQ/view" target="_blank" rel="noopener">DH-00198508</a>: SO Return chuyển <strong>Completed</strong>, lưu Invoice Number = ARCN9900201.</li><li>Mở SO Return, kiểm tra trạng thái Completed.</li></ol></td><td>Hoàn tất <strong>Post Invoice Journal</strong> của SO Return <em>(giả lập)</em>.</td></tr>
+      <tr><td colspan="2" style="background:#f1f1f1;font-weight:700;"><span class="step-tag">TC-012</span> Tạo SO bán bù – Tạo SO bán bù từ item của DLR SO Return đã Complete</td></tr>
+      <tr><td><ol style="margin:0;padding-left:18px;"><li>Mở SO gốc (AFS), bấm <strong>Create Offset SO</strong>; chọn SO Return đã Completed và Shipment gốc.</li><li>Chọn mã sản phẩm và số lượng bán bù, bấm Create Offset SO.</li><li>Kiểm tra SO mới (ARSO0005715): Draft, <strong>Price Book tự gán</strong>, kho, ERP Default Dimension, Original Shipment.</li><li>Chuyển SO sang <strong>Open</strong>; DMS gửi hook <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trun2AA/view" target="_blank" rel="noopener">DH-00198512</a> (<code>CreateSO</code>) <em>(thật)</em>.</li><li>Thực hiện như SO bình thường (người dùng SPP sửa/thêm line).</li></ol></td><td><ol style="margin:0;padding-left:18px;"><li>Nhận hook <code>CreateSO</code> của SO bù vào bảng tạm, tạo SO trên ERP và trả <code>Sync_ResultSO</code> (chưa kiểm tra lần chạy này) <em>(thật)</em>.</li></ol></td></tr>
+    </tbody>
+  </table>
 
-  <div class="callout warn">
-    <span class="label">Các bước thuộc ERP – không nằm trong UM này</span>
-    <strong>Bước 3, 4, 5, 6</strong> (tạo SO Dropship, tạo PO Direct Delivery, Post GR PO, tự Delivery và tạo Packing Slip Journal), <strong>Bước 7</strong> (Post Invoice Journal SO), <strong>Bước 8</strong> (tạo SO Return, tham chiếu Packing Slip Journal gốc), <strong>Bước 9</strong> (Post Delivery và tạo Packing Slip Journal cho SO Return) và phần <strong>kế toán post Invoice Journal của Bước 10</strong> đều thao tác trên <strong>ERP D365</strong>. UM chỉ mô tả phản ứng của DMS ở các bước 1, 2, 7.1, 7.2, 8.1, 8.2 và 10.
-  </div>
-
-  <div class="callout note">
-    <span class="label">Cách test</span>
-    ERP không gọi vào Partial trong lúc test, nên hai hook <code>SO_Return</code> (DH-00187223) và <code>Sync_InvoiceSO</code> (DH-00187225) được <strong>chèn thủ công đúng như ERP gửi</strong> (payload lấy từ hook thật DH-00181756). Phía DMS (tạo SO Return, hoàn tất SO, hủy Shipment) <strong>chạy thật</strong>. Dữ liệu nền là chuỗi Dropship thật trên Partial (Đại lý <code>C0001</code> – CÔNG TY TNHH KINH DOANH ÔTÔ NISU): PO <code>PSPO0001383</code>, SO <code>ARSO0004685</code> (ERP: ARSO0034754), Shipment <code>SM-000396</code>. SO Return test mang mã ERP <code>ARSO-UM5994B</code>, hóa đơn trả <code>ARCN-UM5994B</code>, hóa đơn gốc <code>ARIN0066182</code>. Chuỗi này từng có một SO Return thử cũ (<code>ARSO0034755</code>, chạy trước khi có tính năng hủy Shipment nên Shipment chưa bị hủy); lần này SO Return mới xử lý đúng.
-  </div>
-
-  <!-- Bước 1 -->
-  <h3 id="um-b1">1.1. Bước 1 – Đại lý lên đơn đặt hàng PO Dropship <span class="role">DLR · Thủ công</span></h3>
-  <ol class="um-steps tagged">
-    <li><span class="step-tag">Bước 1.a</span> Đại lý tạo PO loại <strong>Dropship</strong> (PO Type: <em>Dropship – Đơn hàng giao thẳng từ NCC</em>) và gửi duyệt. Ví dụ: PO <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Purchase_Order__c/a1XWC000006yI0D2AU/view" target="_blank" rel="noopener">PSPO0001383</a>. Khi PO ở trạng thái <strong>Approved</strong> là xong bước này, hệ thống chuyển sang Bước 2.
-      <figure class="shot"><img src="images/5994-run2/01-po-dropship.png" alt="PO Dropship"><figcaption>Hình 1 – Bước 1.a: PO Dropship PSPO0001383 đã Approved.</figcaption></figure>
-    </li>
+  <h3 id="um-tc-001-01">TC-001-01 – Tạo PO: DLRs tự tạo PO trên DMS (chỉ 1 vendor)</h3>
+  <p><strong>Đường dẫn:</strong> Home → App Launcher → DLR → Purchase Orders<br><strong>Kết quả mong đợi:</strong> PO được tạo thành công, chứa sản phẩm của một vendor và chuyển sang trạng thái đã phê duyệt.<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#e6f4ea;color:#1e6b34;border:1px solid #b7dfc2;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Đạt</span> PO <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Purchase_Order__c/a1XWC0000075kW12AI/view" target="_blank" rel="noopener">PSPO0001592</a> (4 sản phẩm, NCC ISUZU VIETNAM) đã Approved. NCC có MOQ nên phải đủ MOQ mới gửi duyệt được.</p>
+  <ol class="um-steps">
+    <li>Tạo PO với Record Type = <strong>DLR Purchase Order</strong>, Dealer Tây Bắc Sài Gòn.<figure class="shot"><img src="images/5994-run3/01-tc001-form-tao-po.png" alt="TC-001-01: form tạo PO Dropship."><figcaption>Hình 1 – TC-001-01: form tạo PO Dropship.</figcaption></figure></li>
+    <li>Chọn Priority = <strong>Normal</strong>, PO Type = <strong>Dropship</strong>.</li>
+    <li>Thêm các sản phẩm thuộc cùng một vendor (8025030032, 8025030033, 8025030035, 8025030038).<figure class="shot"><img src="images/5994-run3/02-tc001-chon-san-pham.png" alt="TC-001-01: chọn sản phẩm và số lượng."><figcaption>Hình 2 – TC-001-01: chọn sản phẩm và số lượng.</figcaption></figure><figure class="shot"><img src="images/5994-run3/03-tc001-po-draft-co-san-pham.png" alt="TC-001-01: PO Draft có 4 dòng sản phẩm."><figcaption>Hình 3 – TC-001-01: PO Draft có 4 dòng sản phẩm.</figcaption></figure></li>
+    <li>Chọn <strong>Submit for Approval</strong> và thực hiện Approve.<figure class="shot"><img src="images/5994-run3/04-tc001-po-submit-duyet.png" alt="TC-001-01: sau Submit for Approval."><figcaption>Hình 4 – TC-001-01: sau Submit for Approval.</figcaption></figure><figure class="shot"><img src="images/5994-run3/05-tc001-po-approved.png" alt="TC-001-01: PO Approved."><figcaption>Hình 5 – TC-001-01: PO Approved.</figcaption></figure></li>
   </ol>
 
-  <!-- Bước 2 -->
-  <h3 id="um-b2">1.2. Bước 2 – Hệ thống tự tạo SO theo nhà cung cấp IVC <span class="role">Tự động</span></h3>
-  <ol class="um-steps tagged">
-    <li><span class="step-tag">Bước 2.a</span> Khi PO được duyệt, hệ thống tạo <strong>SO Dropship</strong> (Record Type DLR Part Sales Order, SO Type Dropship, tham chiếu PO) và đồng bộ lên ERP. Mở SO <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002ZE8bYAG/view" target="_blank" rel="noopener">ARSO0004685</a> để kiểm tra: ERP Sales Order <code>ARSO0034754</code>, trạng thái <strong>Delivery</strong>, Đại lý C0001. Field <strong>Original Shipment</strong> và <strong>Sales Order Ref</strong> còn trống vì chưa có Return.
-      <figure class="shot"><img src="images/5994-run2/02-so-dropship-goc.png" alt="SO Dropship gốc"><figcaption>Hình 2 – Bước 2.a: SO Dropship gốc ở trạng thái Delivery.</figcaption></figure>
-    </li>
+  <h3 id="um-tc-001-02">TC-001-02 – Tạo PO: DLRs tự tạo PO trên DMS lớn hơn 1 vendor (2 vendor)</h3>
+  <p><strong>Đường dẫn:</strong> Home → App Launcher → DLR → Purchase Orders<br><strong>Kết quả mong đợi:</strong> PO được tạo thành công và ghi nhận sản phẩm thuộc hai vendor. PO được chuyển sang trạng thái đã phê duyệt.<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#f1f1f1;color:#666;border:1px solid #d5d5d5;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Chưa chạy</span></p>
+  <ol class="um-steps">
+    <li>Tạo PO với Record Type = DLR Purchase Order.</li>
+    <li>Chọn Priority = Normal, PO Type = Dropship.</li>
+    <li>Thêm sản phẩm thuộc hai vendor khác nhau.</li>
+    <li>Chọn Submit for Approval và thực hiện Approve.</li>
   </ol>
 
-  <!-- Bước 7.1 -->
-  <h3 id="um-b71">1.3. Bước 7.1 – Hệ thống tự tạo Shipment cho Đại lý (đã có thông tin invoice) <span class="role">Tự động</span></h3>
-  <p>Kích hoạt sau khi ERP post Invoice Journal SO (Bước 7 trên ERP).</p>
-  <ol class="um-steps tagged">
-    <li><span class="step-tag">Bước 7.1.a</span> Mở <strong>Shipment</strong> của Đại lý: <strong><a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Shipment__c/a1iWC000007X4btYAC/view" target="_blank" rel="noopener">SM-000396</a></strong>, Shipment Type = <strong>Dropship</strong>, thuộc PO PSPO0001383, trạng thái <strong>Creation</strong> (Đại lý chưa nhập kho xong), tổng số lượng 10.
-      <figure class="shot"><img src="images/5994-run2/03-shipment-truoc-return.png" alt="Shipment trước return"><figcaption>Hình 3 – Bước 7.1.a: Shipment SM-000396 ở trạng thái Creation.</figcaption></figure>
-    </li>
-    <li><span class="step-tag">Bước 7.1.b</span> Shipment đã gắn <strong>hóa đơn</strong> từ ERP. Mở Invoice <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Invoice__c/a0rWC00001UCcW3YAL/view" target="_blank" rel="noopener">INV-ARIN0066182</a>: số hóa đơn ERP nằm ở field <strong>JournalId</strong> (<code>ARIN0066182</code>). Đây là khóa để hệ thống tìm Shipment gốc khi Return (Bước 10).
-      <figure class="shot"><img src="images/5994-run2/04-invoice-shipment-goc.png" alt="Invoice của Shipment gốc"><figcaption>Hình 4 – Bước 7.1.b: Invoice INV-ARIN0066182, JournalId = ARIN0066182, thuộc SO ARSO0034754.</figcaption></figure>
-    </li>
+  <h3 id="um-tc-002-01">TC-002-01 – Tạo SO: hệ thống tạo SO trên DMS chỉ 1 vendor</h3>
+  <p><strong>Đường dẫn:</strong> Home → App Launcher → AFS → Sales Order<br><strong>Kết quả mong đợi:</strong> SO 1 Vendor.<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#e6f4ea;color:#1e6b34;border:1px solid #b7dfc2;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Đạt</span> SO <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002guizYAA/view" target="_blank" rel="noopener">ARSO0005713</a> tự tạo, 4 dòng đúng như PO, đã chuyển Open.</p>
+  <ol class="um-steps">
+    <li>Mở PO một vendor đã được phê duyệt.</li>
+    <li>Kiểm tra Sales Order được tạo trên DMS (Record Type DLR Part Sales Order, Loại SO Dropship, tham chiếu PO).<figure class="shot"><img src="images/5994-run3/06-tc002-so-draft-tu-sinh.png" alt="TC-002-01: SO Draft do hệ thống tự tạo sau khi PO Approved."><figcaption>Hình 6 – TC-002-01: SO Draft do hệ thống tự tạo sau khi PO Approved.</figcaption></figure></li>
+    <li>Kiểm tra thông tin liên kết với PO, vendor và sản phẩm.</li>
+    <li>Gắn hoặc kiểm tra <strong>ERP Default Dimension</strong> (SPP-AFS---SPP--02, bắt buộc trước khi Open).</li>
+    <li>Chuyển SO sang trạng thái <strong>Open</strong>.</li>
   </ol>
 
-  <!-- Bước 7.2 -->
-  <h3 id="um-b72">1.4. Bước 7.2 – Goods Receipt (GR) ở trạng thái Draft <span class="role">Tự động</span></h3>
-  <ol class="um-steps tagged">
-    <li><span class="step-tag">Bước 7.2.a</span> Hệ thống tự tạo <strong>Goods Receipt</strong> (Record Type Parts Receipt Note) ở trạng thái <strong>Draft</strong> cho Shipment, chờ Đại lý nhập kho. Mở GR <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Inventory_Transaction__c/a0pWC0000086FEHYA2/view" target="_blank" rel="noopener">GRP-20261022-00001</a>: <strong>Shipment</strong> trỏ về SM-000396, <strong>Status</strong> = Draft.
-      <figure class="shot"><img src="images/5994-run2/05-gr-draft-truoc-return.png" alt="GR Draft"><figcaption>Hình 5 – Bước 7.2.a: GR GRP-20261022-00001, Status = Draft, thuộc Shipment SM-000396.</figcaption></figure>
-    </li>
+  <h3 id="um-tc-002-02">TC-002-02 – Tạo SO: hệ thống tạo SO trên DMS lớn hơn 1 vendor (2 vendor)</h3>
+  <p><strong>Đường dẫn:</strong> Home → App Launcher → AFS → Sales Order<br><strong>Kết quả mong đợi:</strong> SO 2 Vendor.<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#f1f1f1;color:#666;border:1px solid #d5d5d5;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Chưa chạy</span></p>
+  <ol class="um-steps">
+    <li>Mở PO có hai vendor đã được phê duyệt.</li>
+    <li>Kiểm tra các SO được hệ thống tạo trên DMS.</li>
+    <li>Đối chiếu vendor và sản phẩm của từng SO với PO.</li>
+    <li>Gắn hoặc kiểm tra ERP Default Dimension.</li>
+    <li>Chuyển các SO sang trạng thái Open.</li>
   </ol>
 
-  <!-- Bước 8.1 -->
-  <h3 id="um-b81">1.5. Bước 8.1 – Hệ thống tự tạo SO Return trên DMS <span class="role">Tự động</span></h3>
-  <p>Kích hoạt khi người dùng ERP tạo SO Return và chuyển <strong>Confirmed</strong> (Bước 8 trên ERP); ERP gọi hook <code>SO_Return</code> về DMS. Không cần thao tác trên DMS.</p>
-  <ol class="um-steps tagged">
-    <li><span class="step-tag">Bước 8.1.a</span> Kiểm tra hook: mở <strong>D365FO_Hook</strong> mới nhất (ví dụ <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003lwOb2AI/view" target="_blank" rel="noopener">DH-00187223</a>), <strong>isRun</strong> và <strong>isSuccess</strong> được tích, <strong>Message</strong> ghi <em>"Success: Created Sales_Order__c …"</em>.
-      <figure class="shot"><img src="images/5994-run2/06-hook-so-return.png" alt="Hook SO_Return"><figcaption>Hình 6 – Bước 8.1.a: Hook SO_Return (DH-00187223) xử lý thành công.</figcaption></figure>
-    </li>
-    <li><span class="step-tag">Bước 8.1.b</span> Mở <strong>SO Return</strong> vừa tạo (<a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002bjWTYAY/view" target="_blank" rel="noopener">ARSO0004963</a>): thanh trạng thái ở <strong>Open</strong>; Record Type <strong>SO Dropship Return</strong>; <strong>Sales Order Ref</strong> trỏ về SO gốc ARSO0004685; <strong>ERP Sales Order</strong> là số SO Return trên ERP; Quantity_RU âm (-206) vì là đơn trả hàng.
-      <figure class="shot"><img src="images/5994-run2/07-so-return-open.png" alt="SO Return Open"><figcaption>Hình 7 – Bước 8.1.b: SO Return ở trạng thái Open, liên kết SO gốc.</figcaption></figure>
-    </li>
-    <li><span class="step-tag">Bước 8.1.c</span> Mở SO Return <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002bjWTYAY/view" target="_blank" rel="noopener">ARSO0004963</a>, tab <strong>Related</strong> → <strong>Sales Order Item</strong>: các dòng trả hàng (mã item, số lượng âm, đơn giá) đã được tạo, sản phẩm gắn theo mã item. SO Return kế thừa <strong>PO gốc</strong> (PSPO0001383) nên PO gốc vẫn được giữ.
-      <figure class="shot"><img src="images/5994-run2/08-so-return-items.png" alt="Dòng SO Return"><figcaption>Hình 8 – Bước 8.1.c: SO Return có 2 dòng Sales Order Item (số lượng âm).</figcaption></figure>
-    </li>
+  <h3 id="um-tc-003-01">TC-003-01 – Tạo SO: tự động tạo SO dropship lên ERP (1 vendor)</h3>
+  <p><strong>Đường dẫn:</strong> ERP<br><strong>Kết quả mong đợi:</strong> (CSV không ghi) SO Dropship được tạo trên ERP và trả SalesId về DMS.<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#e6f4ea;color:#1e6b34;border:1px solid #b7dfc2;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Đạt</span> hook DMS → ERP chạy thật.</p>
+  <ol class="um-steps">
+    <li>SO Dropship 1 vendor đã Open: DMS tạo hook <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trUz2AI/view" target="_blank" rel="noopener">DH-00198496</a> (<code>CreateSO</code>, Message "Successfully inserted data into the temp table. Lines=4").</li>
+    <li>ERP tạo SO và trả hook <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trWb2AI/view" target="_blank" rel="noopener">DH-00198497</a> (<code>Sync_ResultSO</code>) sau khoảng 20 giây: ERP Sales Order = <strong>ARSO0034822</strong>.<figure class="shot"><img src="images/5994-run3/07-tc002-tc003-so-open-erp-salesid.png" alt="TC-003-01: SO ARSO0005713 đã Open và có ERP Sales Order ARSO0034822."><figcaption>Hình 7 – TC-003-01: SO ARSO0005713 đã Open và có ERP Sales Order ARSO0034822.</figcaption></figure></li>
   </ol>
 
+  <h3 id="um-tc-003-02">TC-003-02 – Tạo SO: tự động tạo SO dropship lên ERP (2 vendor)</h3>
+  <p><strong>Đường dẫn:</strong> ERP<br><strong>Kết quả mong đợi:</strong> (CSV không ghi)<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#f1f1f1;color:#666;border:1px solid #d5d5d5;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Chưa chạy</span></p>
+  <ol class="um-steps">
+    <li>SO Dropship 2 vendor đã Open: mỗi SO sinh một hook <code>CreateSO</code> và nhận một hook <code>Sync_ResultSO</code>.</li>
+  </ol>
+
+  <h3 id="um-tc-004">TC-004 – Post invoice Journal SO: post thủ công 1 SO trên ERP</h3>
+  <p><strong>Đường dẫn:</strong> ERP<br><strong>Kết quả mong đợi:</strong> Post thủ công 1 SO trên ERP.<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#fff4e0;color:#8a5a00;border:1px solid #f0d49a;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Bước ERP, giả lập</span></p>
+  <ol class="um-steps">
+    <li>SO Dropship đã đồng bộ lên ERP; người dùng ERP post packing slip và Invoice Journal thủ công.</li>
+    <li>Giả lập 2 đợt giao: ARPS9900101 (8025030032 x1, 8025030033 x1) và ARPS9900102 (8025030035 x1, 8025030038 x1). Kết quả xem ở TC-005.</li>
+  </ol>
+
+  <h3 id="um-tc-005">TC-005 – Tạo SM: tự động tạo SM khi hoàn tất post Invoice Journal SO trên ERP</h3>
+  <p><strong>Đường dẫn:</strong> DMS → App Launcher → DLR → Shipments<br><strong>Kết quả mong đợi:</strong> Shipment liên kết đúng SO, invoice và chứa đúng sản phẩm, số lượng.<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#e6f4ea;color:#1e6b34;border:1px solid #b7dfc2;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Đạt</span> mỗi Shipment gắn đúng một hóa đơn: SM-000418 (ARIN9900101), SM-000419 (ARIN9900102).</p>
+  <ol class="um-steps">
+    <li>Hoàn tất Post Invoice Journal của SO Dropship trên ERP (giả lập).</li>
+    <li>Chờ hook về DMS: <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trYD2AY/view" target="_blank" rel="noopener">DH-00198498</a>, <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trbR2AQ/view" target="_blank" rel="noopener">DH-00198500</a> (<code>8_PostPacking</code>), <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trd32AA/view" target="_blank" rel="noopener">DH-00198501</a>, <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trgH2AQ/view" target="_blank" rel="noopener">DH-00198503</a> (<code>9_PostInvoice</code>), <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003tref2AA/view" target="_blank" rel="noopener">DH-00198502</a>, <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trht2AA/view" target="_blank" rel="noopener">DH-00198504</a> (<code>Sync_InvoiceSO</code> loại DropShip).</li>
+    <li>Mở SO <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002guizYAA/view" target="_blank" rel="noopener">ARSO0005713</a>, tab Dropship Shipment: có 2 Shipment <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Shipment__c/a1iWC000007onPhYAI/view" target="_blank" rel="noopener">SM-000418</a> và <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Shipment__c/a1iWC000007onRJYAY/view" target="_blank" rel="noopener">SM-000419</a> (Dropship, Creation, mỗi packing slip một Shipment).<figure class="shot"><img src="images/5994-run3/08-tc005-sm-000418-invoice.png" alt="TC-005: SM-000418 Creation, Invoice INV-ARIN9900101 và ERP Invoice Id ARIN9900101."><figcaption>Hình 8 – TC-005: SM-000418 Creation, Invoice INV-ARIN9900101 và ERP Invoice Id ARIN9900101.</figcaption></figure></li>
+    <li>Kiểm tra Shipment liên kết đúng SO, invoice, sản phẩm, số lượng. Hóa đơn <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Invoice__c/a0rWC00001W4YJVYA3/view" target="_blank" rel="noopener">INV-ARIN9900101</a> có <strong>JournalId = ARIN9900101</strong> (khóa để tìm Shipment gốc khi Return) và chỉ gắn vào Shipment có items khớp dòng hóa đơn.<figure class="shot"><img src="images/5994-run3/18-b71-invoice-arin9900101.png" alt="TC-005: Invoice INV-ARIN9900101, JournalId = ARIN9900101."><figcaption>Hình 9 – TC-005: Invoice INV-ARIN9900101, JournalId = ARIN9900101.</figcaption></figure><figure class="shot"><img src="images/5994-run3/08-tc005-sm-000419-invoice.png" alt="TC-005: SM-000419 mang hóa đơn ARIN9900102, không bị gắn hóa đơn của SM-000418."><figcaption>Hình 10 – TC-005: SM-000419 mang hóa đơn ARIN9900102, không bị gắn hóa đơn của SM-000418.</figcaption></figure></li>
+    <li>Field <strong>ERP Invoice Id</strong> (khối Information của Shipment) được ghi khi hook <code>9_PostInvoice</code> gắn hóa đơn; hook <code>Sync_InvoiceSO</code> chỉ ghi vào Shipment đã gắn đúng hóa đơn đó và chưa có mã (Message ví dụ "Skipped: … bỏ qua 1 Shipment đã có mã hóa đơn ERP …").</li>
+  </ol>
+
+  <h3 id="um-tc-006">TC-006 – Tạo SO Return trên ERP: ERP thực hiện tạo manual 1 SO Return</h3>
+  <p><strong>Đường dẫn:</strong> ERP<br><strong>Kết quả mong đợi:</strong> (CSV không ghi) SO gốc: ARSO0034782, SO Return: ARSO0034785 (dữ liệu IVC).<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#fff4e0;color:#8a5a00;border:1px solid #f0d49a;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Bước ERP, giả lập</span></p>
+  <ol class="um-steps">
+    <li>SO gốc (ARSO0034822) đã hoàn thành trên ERP.</li>
+    <li>Tạo thủ công SO Return tham chiếu SO gốc: giả lập <strong>ARSO9900201</strong>, trả hóa đơn ARIN9900101 (8025030032 x1, 8025030033 x1).</li>
+  </ol>
+
+  <h3 id="um-tc-007">TC-007 – Tạo SO Return trên DMS: tự động đồng bộ SO Return từ ERP xuống DMS</h3>
+  <p><strong>Đường dẫn:</strong> DMS → App Launcher → AFS → Sales Orders<br><strong>Kết quả mong đợi:</strong> SO Return được tạo thành công trên ERP, tham chiếu đúng giao dịch gốc và sẵn sàng đồng bộ về DMS.<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#e6f4ea;color:#1e6b34;border:1px solid #b7dfc2;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Đạt</span> SO Return <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002gupRYAQ/view" target="_blank" rel="noopener">ARSO0005714</a> do hook <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trjV2AQ/view" target="_blank" rel="noopener">DH-00198505</a> tạo.</p>
+  <ol class="um-steps">
+    <li>Tạo SO Return trên ERP (TC-006).</li>
+    <li>Chờ tiến trình đồng bộ từ ERP về DMS: hook <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trjV2AQ/view" target="_blank" rel="noopener">DH-00198505</a> (<code>SO_Return</code>) isRun và isSuccess được tích, Message "Success: Created Sales_Order__c …".<figure class="shot"><img src="images/5994-run3/20-b81-hook-so-return-dh-00198505.png" alt="TC-007: hook SO_Return (DH-00198505) xử lý thành công."><figcaption>Hình 11 – TC-007: hook SO_Return (DH-00198505) xử lý thành công.</figcaption></figure></li>
+    <li>Trên DMS tìm SO Return theo mã ERP (ARSO9900201): Record Type <strong>SO Dropship Return</strong>, Sales Order Ref trỏ về SO gốc ARSO0005713, kế thừa PO PSPO0001592, Quantity_RU âm (-2).<figure class="shot"><img src="images/5994-run3/09-tc007-so-return-tu-erp.png" alt="TC-007: SO Return ARSO0005714, liên kết SO gốc."><figcaption>Hình 12 – TC-007: SO Return ARSO0005714, liên kết SO gốc.</figcaption></figure></li>
+    <li>Tab Related → Sales Order Item: 2 dòng trả hàng (số lượng âm, đơn giá, sản phẩm theo mã item).<figure class="shot"><img src="images/5994-run3/25-b81-so-return-items.png" alt="TC-007: SO Return có 2 dòng Sales Order Item."><figcaption>Hình 13 – TC-007: SO Return có 2 dòng Sales Order Item.</figcaption></figure></li>
+  </ol>
   <div class="callout warn">
     <span class="label">Nếu ERP gửi lặp</span>
     Cùng một số SO Return gửi lần 2 thì hệ thống <strong>bỏ qua</strong>, không tạo SO Return thứ hai. Kết quả ghi ở Message của hook.
   </div>
 
-  <!-- Bước 8.2 -->
-  <h3 id="um-b82">1.6. Bước 8.2 – Tự động hủy GR <span class="role">Chưa có</span></h3>
-  <ol class="um-steps tagged">
-    <li><span class="step-tag">Bước 8.2.a</span> Theo quy trình, khi có SO Return hệ thống phải <strong>tự hủy GR</strong> của Shipment gốc. <strong>Hiện chưa được hiện thực</strong>: sau Bước 8.1 và cả sau Bước 10, GR <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Inventory_Transaction__c/a0pWC0000086FEHYA2/view" target="_blank" rel="noopener">GRP-20261022-00001</a> vẫn ở trạng thái <strong>Draft</strong> (Hình 9, chụp sau khi Shipment đã Cancelled).
-      <figure class="shot"><img src="images/5994-run2/12-gr-van-draft.png" alt="GR vẫn Draft"><figcaption>Hình 9 – Bước 8.2.a: GR GRP-20261022-00001 vẫn Draft dù Shipment SM-000396 đã Cancelled.</figcaption></figure>
-    </li>
+  <h3 id="um-tc-008">TC-008 – Post Delivery, tạo Packing Slip Journal và Post Invoice Journal</h3>
+  <p><strong>Đường dẫn:</strong> ERP<br><strong>Kết quả mong đợi:</strong> (CSV không ghi) IVC Rejected 09/11: DMS tự tạo DO không có DO items, DO phải ở Draft.<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#e6f4ea;color:#1e6b34;border:1px solid #b7dfc2;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Đạt</span> DMS sinh Return DO ở Draft, có DO items (xem TC-009).</p>
+  <ol class="um-steps">
+    <li>SO Return đã đồng bộ về DMS và có GR.</li>
+    <li>Trên ERP post thủ công Post Delivery, tạo Packing Slip Journal cho SO Return (ARPS9900201) và Post Invoice Journal (giả lập).</li>
+    <li>ERP gửi hook <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trl72AA/view" target="_blank" rel="noopener">DH-00198506</a> (<code>8_PostPacking</code>, SO_Type = SO_Return) về DMS. Lúc này DMS chưa xác định được Shipment gốc nên vẫn sinh Return DO.</li>
   </ol>
-  <div class="callout bad">
-    <span class="label">Cần người dùng xử lý tạm thời</span>
-    Cho đến khi Bước 8.2 được làm, Đại lý/IVC <strong>không dùng GR này để nhập kho</strong> và báo bộ phận hỗ trợ xử lý.
+
+  <h3 id="um-tc-009">TC-009 – Tạo DO: DMS tự động sinh DO khi Post Packing Slips trên ERP</h3>
+  <p><strong>Đường dẫn:</strong> DMS → App Launcher → AFS → Sales Order<br><strong>Kết quả mong đợi:</strong> DO được tạo ở trạng thái Draft và có gắn items.<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#e6f4ea;color:#1e6b34;border:1px solid #b7dfc2;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Đạt</span> <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Delivery_Order__c/a0eWC000004ZGCTYA4/view" target="_blank" rel="noopener">DO-20261111-3424</a> (RT DO Return Dropship) ở Draft, có 2 DO items.</p>
+  <ol class="um-steps">
+    <li>Vào SO Return <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002gupRYAQ/view" target="_blank" rel="noopener">ARSO0005714</a>.</li>
+    <li>Vào tab Delivery Order.</li>
+    <li>Kiểm tra DO vừa tạo ở trạng thái <strong>Draft</strong> (kho xuất SF_ITB_Dropship, kho nhận DLR_ITB).</li>
+    <li>Kiểm tra trong DO đã có <strong>DO items</strong>: 8025030032 x1, 8025030033 x1.<figure class="shot"><img src="images/5994-run3/10-tc008-tc009-do-return-draft-co-items.png" alt="TC-009: Return DO DO-20261111-3424 ở Draft và có 2 DO items."><figcaption>Hình 14 – TC-009: Return DO DO-20261111-3424 ở Draft và có 2 DO items.</figcaption></figure></li>
+  </ol>
+
+  <h3 id="um-tc-010">TC-010 – Cancel SM và DO: tự động cancel SM gốc & DO ở TC-009 khi SO Return nhận được tín hiệu post invoice của đơn Return từ ERP</h3>
+  <p><strong>Đường dẫn:</strong> DMS → App Launcher → DLR → Shipments<br><strong>Kết quả mong đợi:</strong> Khi post return invoice thì DMS chỉ cancel đúng 1 SM theo invoice và cancel DO.<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#e6f4ea;color:#1e6b34;border:1px solid #b7dfc2;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Đạt</span> chỉ SM-000418 và Return DO bị Cancelled, SM-000419 giữ nguyên.</p>
+  <ol class="um-steps">
+    <li>Đảm bảo SO Return đã đồng bộ về DMS và giao dịch gốc có SM. ERP post Invoice Journal của SO Return và gửi hook <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003troL2AQ/view" target="_blank" rel="noopener">DH-00198508</a> (<code>Sync_InvoiceSO</code>, <code>InvoiceId</code> = ARCN9900201, <code>InvoiceId_Orig</code> = ARIN9900101); Message ghi "Success: Completed Sales_Order__c … Hủy 1 Shipment gốc chưa nhập kho. Hủy Return DO: DO-20261111-3424".<figure class="shot"><img src="images/5994-run3/21-b10-hook-sync-invoice-dh-00198508.png" alt="TC-010: hook Sync_InvoiceSO (DH-00198508) thành công."><figcaption>Hình 15 – TC-010: hook Sync_InvoiceSO (DH-00198508) thành công.</figcaption></figure></li>
+    <li>Mở SO Return <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002gupRYAQ/view" target="_blank" rel="noopener">ARSO0005714</a>: Original Shipment trỏ về <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Shipment__c/a1iWC000007onPhYAI/view" target="_blank" rel="noopener">SM-000418</a>.</li>
+    <li>Kiểm tra Shipment đã chuyển sang Cancelled chưa: <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Shipment__c/a1iWC000007onPhYAI/view" target="_blank" rel="noopener">SM-000418</a> (hóa đơn ARIN9900101) <strong>Cancelled</strong>; <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Shipment__c/a1iWC000007onRJYAY/view" target="_blank" rel="noopener">SM-000419</a> (hóa đơn ARIN9900102) <strong>giữ nguyên Creation</strong>.<figure class="shot"><img src="images/5994-run3/11-tc010-sm-000418-cancelled.png" alt="TC-010: SM-000418 (hóa đơn gốc của SO Return) đã Cancelled."><figcaption>Hình 16 – TC-010: SM-000418 (hóa đơn gốc của SO Return) đã Cancelled.</figcaption></figure><figure class="shot"><img src="images/5994-run3/12-tc010-sm-000419-giu-nguyen.png" alt="TC-010: SM-000419 (hóa đơn khác) giữ nguyên Creation."><figcaption>Hình 17 – TC-010: SM-000419 (hóa đơn khác) giữ nguyên Creation.</figcaption></figure></li>
+    <li>Kiểm tra DO ở SO Return đã chuyển sang Cancelled chưa: <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Delivery_Order__c/a0eWC000004ZGCTYA4/view" target="_blank" rel="noopener">DO-20261111-3424</a> <strong>Cancelled</strong>.<figure class="shot"><img src="images/5994-run3/13-tc010-do-return-cancelled.png" alt="TC-010: Return DO đã Cancelled."><figcaption>Hình 18 – TC-010: Return DO đã Cancelled.</figcaption></figure></li>
+  </ol>
+  <div class="callout note">
+    <span class="label">Rule tìm Shipment gốc và xử lý Return DO</span>
+    <ol>
+      <li>Ở TC-008 (ERP post packing slip của SO Return) DMS chưa xác định được Shipment gốc nên vẫn sinh Return DO (Draft).</li>
+      <li>Ở TC-010 hook <code>Sync_InvoiceSO</code> có <code>InvoiceId_Orig</code>: hệ thống đối chiếu với <strong>ERP Invoice Id</strong> đã lưu trên Shipment (TC-005) để tìm Shipment gốc (chỉ đúng Shipment của hóa đơn đó) và gắn vào SO Return (field Original Shipment).</li>
+      <li><strong>Shipment gốc chưa Completed</strong> (chưa nhập kho): Cancel Shipment gốc và Cancel Return DO. Các Shipment khác của SO giữ nguyên.</li>
+      <li><strong>Shipment gốc đã Completed</strong> (đã nhập kho): không Cancel Shipment gốc và Return DO; người dùng tiếp tục xử lý Return DO (Auto-complete DO hoặc Picking, Packing, Good Issue, xem mục 2).</li>
+    </ol>
   </div>
 
-  <!-- Bước 10 -->
-  <h3 id="um-b10">1.7. Bước 10 (phần DMS) – Hoàn tất SO Return và xử lý Shipment gốc <span class="role">Tự động</span></h3>
-  <p>Kích hoạt khi kế toán post Invoice Journal cho SO Return trên ERP (phần ERP của Bước 10); ERP gọi hook <code>Sync_InvoiceSO</code> kèm số hóa đơn trả (<code>InvoiceId</code>) và số hóa đơn gốc (<code>InvoiceId_Orig</code>). Không cần thao tác trên DMS.</p>
-  <ol class="um-steps tagged">
-    <li><span class="step-tag">Bước 10.a</span> Kiểm tra hook <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003lwRp2AI/view" target="_blank" rel="noopener">DH-00187225</a>: <strong>Message</strong> ghi <em>"Success: Completed Sales_Order__c … Hủy 1 Shipment gốc."</em>
-      <figure class="shot"><img src="images/5994-run2/09-hook-post-invoice.png" alt="Hook Sync_InvoiceSO"><figcaption>Hình 10 – Bước 10.a: Hook Sync_InvoiceSO (DH-00187225) thành công; Input thể hiện InvoiceId và InvoiceId_Orig.</figcaption></figure>
-    </li>
-    <li><span class="step-tag">Bước 10.b</span> Mở lại <strong>SO Return</strong> <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002bjWTYAY/view" target="_blank" rel="noopener">ARSO0004963</a>: thanh trạng thái đã <strong>Completed</strong>; <strong>Invoice Number</strong> = số hóa đơn ERP gửi; <strong>Original Shipment</strong> trỏ về Shipment gốc bị hủy (<a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Shipment__c/a1iWC000007X4btYAC/view" target="_blank" rel="noopener">SM-000396</a>).
-      <figure class="shot"><img src="images/5994-run2/10-so-return-completed.png" alt="SO Return Completed"><figcaption>Hình 11 – Bước 10.b: SO Return Completed, có Invoice Number và Original Shipment.</figcaption></figure>
-    </li>
-    <li><span class="step-tag">Bước 10.c</span> Bấm vào <strong>Original Shipment</strong> (hoặc mở <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Shipment__c/a1iWC000007X4btYAC/view" target="_blank" rel="noopener">SM-000396</a>): Shipment gốc <strong>chưa nhập kho</strong> đã chuyển sang <strong>Cancelled</strong> (trước đó là Creation). Shipment <strong>đã nhập kho</strong> (Completed, hoặc đã có Goods Receipt Completed) thì <strong>không bị hủy</strong>: hệ thống giữ nguyên và gắn hai chiều với Return DO (<strong>Delivery Order.Original Shipment</strong> = Shipment gốc, <strong>Shipment.Return Delivery Order</strong> = Return DO) để biết DO trả hàng này thuộc Shipment nào.
-      <figure class="shot"><img src="images/5994-run2/11-shipment-cancelled.png" alt="Shipment Cancelled"><figcaption>Hình 12 – Bước 10.c: Shipment SM-000396 trạng thái Cancelled.</figcaption></figure>
-    </li>
-    <li><span class="step-tag">Bước 10.d</span> Kiểm tra SO Dropship gốc <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002ZE8bYAG/view" target="_blank" rel="noopener">ARSO0004685</a>: <strong>không bị thay đổi</strong> (vẫn Delivery), để PO gốc và SO gốc tiếp tục dùng được (kể cả khi SO gốc còn đang Post Partial).
-      <figure class="shot"><img src="images/5994-run2/13-so-goc-sau-return.png" alt="SO gốc sau return"><figcaption>Hình 13 – Bước 10.d: SO gốc vẫn ở Delivery sau khi hoàn tất SO Return.</figcaption></figure>
-    </li>
-    <li><span class="step-tag">Bước 10.e</span> <strong>ERP gửi lặp</strong> hook <code>Sync_InvoiceSO</code> khi SO Return đã Completed với cùng số hóa đơn: hệ thống <strong>không đổi SO Return</strong> (Status, Invoice Number giữ nguyên) nhưng <strong>vẫn xử lý lại Shipment gốc</strong> (các bước đều lặp lại an toàn). Nhờ vậy nếu lần gửi trước chưa gắn được Shipment gốc / Return DO (ví dụ Return DO tạo sau khi SO đã Completed) thì lần gửi lặp sẽ bù. <strong>Message</strong> của hook bắt đầu bằng <em>"Skipped: …"</em> kèm kết quả xử lý Shipment.</li>
+  <h3 id="um-tc-011">TC-011 – Completed SO Return: tự động completed SO Return trên DMS khi Post Invoice Journal trên ERP</h3>
+  <p><strong>Đường dẫn:</strong> DMS → App Launcher → AFS → Sales Orders<br><strong>Kết quả mong đợi:</strong> SO Return trên DMS được chuyển sang Complete.<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#e6f4ea;color:#1e6b34;border:1px solid #b7dfc2;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Đạt</span> <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002gupRYAQ/view" target="_blank" rel="noopener">ARSO0005714</a> Completed, Invoice Number ARCN9900201.</p>
+  <ol class="um-steps">
+    <li>Hoàn tất Post Invoice Journal của SO Return trên ERP (hook <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003troL2AQ/view" target="_blank" rel="noopener">DH-00198508</a>).</li>
+    <li>Kiểm tra trạng thái SO Return đã Complete chưa: thanh trạng thái Completed, Invoice Number = ARCN9900201, Original Shipment = SM-000418.<figure class="shot"><img src="images/5994-run3/14-tc011-so-return-completed.png" alt="TC-011: SO Return Completed."><figcaption>Hình 19 – TC-011: SO Return Completed.</figcaption></figure></li>
   </ol>
 
+  <h3 id="um-tc-012">TC-012 – Tạo SO bán bù: tạo SO bán bù từ item của DLR SO Return đã Complete</h3>
+  <p><strong>Đường dẫn:</strong> DMS → App Launcher → AFS → SO Return<br><strong>Kết quả mong đợi:</strong> Hệ thống tạo thành công một SO bán bù và liên kết với DLR SO Return nguồn. SO tự động gán Pricebook để chuyển SO sang trạng thái Open thành công.<br><strong>Chạy lại 11/11/2026:</strong> <span style="background:#e6f4ea;color:#1e6b34;border:1px solid #b7dfc2;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700;margin-right:4px;white-space:nowrap;">Đạt</span> SO bù <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002gsPSYAY/view" target="_blank" rel="noopener">ARSO0005715</a> tự gán Standard Price Book, Open được. Quyền sửa line của SPP chưa kiểm bằng tài khoản thật.</p>
+  <ol class="um-steps">
+    <li>Mở DLR SO Return đã Complete (từ SO gốc <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002guizYAA/view" target="_blank" rel="noopener">ARSO0005713</a> trên AFS), chọn <strong>Create Offset SO</strong>.</li>
+    <li>Chọn SO Return đã Complete (chỉ liệt kê SO Return cùng PO) và Shipment gốc SM-000418.<figure class="shot"><img src="images/5994-run3/15-tc012-create-offset-so-form.png" alt="TC-012: form Create Offset SO."><figcaption>Hình 20 – TC-012: form Create Offset SO.</figcaption></figure></li>
+    <li>Chọn mã sản phẩm và số lượng bán bù (8025030032 x1, 8025030033 x1).</li>
+    <li>Chọn <strong>Create Offset SO</strong>.</li>
+    <li>Kiểm tra các thông tin trên SO vừa tạo: Draft, <strong>Price Book = Standard Price Book</strong> (lấy từ SO gốc), kho DLR_ITB, ERP Default Dimension SPP-AFS---SPP--02, Original Shipment SM-000418, Sales Order Ref = SO Return.<figure class="shot"><img src="images/5994-run3/16-tc012-offset-so-draft-pricebook.png" alt="TC-012: SO bù ARSO0005715 Draft, đã có Price Book."><figcaption>Hình 21 – TC-012: SO bù ARSO0005715 Draft, đã có Price Book.</figcaption></figure></li>
+    <li>Chuyển SO sang trạng thái <strong>Open</strong>: thành công, DMS gửi ERP hook <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/D365FO_Hook__c/a0WWC000003trun2AA/view" target="_blank" rel="noopener">DH-00198512</a> (<code>CreateSO</code>, Lines=2).<figure class="shot"><img src="images/5994-run3/17-tc012-offset-so-open.png" alt="TC-012: SO bù chuyển Open."><figcaption>Hình 22 – TC-012: SO bù chuyển Open.</figcaption></figure></li>
+    <li>Thực hiện như đơn SO bình thường. Người dùng SPP (role <code>IVC_PBO_Staff_Dealer_part_operation</code>) được sharing rule quyền Edit để sửa/thêm line SO Item.</li>
+  </ol>
+
+  <h3 id="um-ba">Phần chưa làm</h3>
   <div class="callout warn">
-    <span class="label">Chưa có trong Bước 10</span>
-    Quy trình yêu cầu cập nhật thêm <strong>ngày post invoice</strong> lên SO Return (vì kế toán thường lùi ngày). Hiện hook ERP chưa gửi ngày hóa đơn, nên field <strong>Invoice_Date</strong> của SO Return còn trống (Hình 11).
+    <span class="label">Chưa làm / chưa kiểm</span>
+    <ul>
+      <li>Kịch bản 2 vendor (TC-001-02, 002-02, 003-02) chưa chạy lại.</li>
+      <li>Quyền sửa line SO bù của SPP (role <code>IVC_PBO_Staff_Dealer_part_operation</code>) chưa kiểm bằng tài khoản thật vì Partial chưa có user active thuộc role này.</li>
+      <li>Tự hủy GR của Shipment gốc khi có SO Return (GR vẫn Draft).</li>
+      <li>Ngày post invoice: hook ERP chưa gửi ngày hóa đơn nên Invoice_Date của SO Return còn trống.</li>
+      <li>Nhánh "Shipment gốc đã Completed" (giữ Shipment và Return DO) mới có test tự động, chưa chạy ở giao diện.</li>
+    </ul>
   </div>
 
-  <!-- Kết quả -->
-  <h3 id="um-result">1.8. Kết quả test thực tế (Partial, 28/10/2026, dữ liệu mới)</h3>
-  <table class="grid">
-    <thead><tr><th class="c" style="width:12%">Bước</th><th style="width:34%">Kiểm tra</th><th class="c" style="width:12%">Kết quả</th><th>Ghi chú</th></tr></thead>
-    <tbody>
-      <tr><td class="c">1, 2</td><td>PO Dropship Approved, SO Dropship gốc tự tạo</td><td class="c">Đạt</td><td>PSPO0001383, SO ARSO0004685 (ERP ARSO0034754)</td></tr>
-      <tr><td class="c">7.1</td><td>Shipment của Đại lý có invoice</td><td class="c">Đạt</td><td>SM-000396 (Creation), Invoice JournalId ARIN0066182</td></tr>
-      <tr><td class="c">7.2</td><td>GR tự tạo ở trạng thái Draft</td><td class="c">Đạt</td><td>GRP-20261022-00001 (có trên Partial; chưa có trên QA)</td></tr>
-      <tr><td class="c">8.1</td><td>Hook <code>SO_Return</code> tạo SO Return</td><td class="c">Đạt</td><td>DH-00187223: ARSO0004963, Record Type SO Dropship Return, Open, 2 dòng item, kế thừa PO và SO Type từ SO gốc. Dealer hiển thị đúng Đại lý C0001. Lưu ý: mã Đại lý bị trùng Account trên Partial (ví dụ <code>C0016</code>) thì Dealer hiển thị "REMOVED DUP" – lỗi dữ liệu</td></tr>
-      <tr><td class="c">8.2</td><td>Tự hủy GR</td><td class="c">Chưa có</td><td>GR vẫn Draft</td></tr>
-      <tr><td class="c">10.a, 10.b</td><td>Hook <code>Sync_InvoiceSO</code> hoàn tất SO Return</td><td class="c">Đạt</td><td>DH-00187225: SO Return Completed, Invoice Number lưu đúng</td></tr>
-      <tr><td class="c">10.c</td><td>Hủy Shipment gốc theo <code>InvoiceId_Orig</code></td><td class="c">Đạt</td><td>SM-000396 (Creation) chuyển Cancelled; Original Shipment trên SO Return trỏ đúng</td></tr>
-      <tr><td class="c">10.d</td><td>SO gốc và PO gốc giữ nguyên</td><td class="c">Đạt</td><td>SO gốc vẫn Delivery</td></tr>
-      <tr><td class="c">10</td><td>Ngày post invoice</td><td class="c">Chưa có</td><td>Hook không có ngày hóa đơn; Invoice_Date và Complete Date trên SO Return để trống</td></tr>
-    </tbody>
-  </table>
-
-  <!-- ===== UM luồng DLR Stock ===== -->
-  <h2 id="stock" class="page-break">2. Luồng DLR Stock (Đại lý đã nhập kho)</h2>
+<h2 id="stock" class="page-break">2. Luồng DLR Stock (Đại lý đã nhập kho)</h2>
 
   <h3 id="um-stock">2.1. Tổng quan, badge và điều kiện đầu vào</h3>
-  <p>Áp dụng khi hàng Dropship <strong>đã được Đại lý nhập kho</strong> (đã có tồn kho tại Đại lý) và cần trả hàng. Khác với luồng Non-Stock (mục 1.5 → 1.7, hệ thống tự hủy Shipment gốc), ở luồng này <strong>Đại lý tự xuất kho trả hàng trên DMS</strong>: tạo Part Delivery Order (DO) từ SO Return, đi qua Picking, Packing, Good Issue, rồi tạo SO bán bù. Các bước đánh số tiếp theo quy trình (Bước 11 → 14); riêng Bước 12 được tách thành 12.1, 12.2, 12.3 theo đúng các màn hình thao tác trên DMS. Ảnh chụp từ môi trường <strong>Partial</strong> ngày 30/10/2026.</p>
+  <p>Áp dụng khi hàng Dropship <strong>đã được Đại lý nhập kho</strong> (đã có tồn kho tại Đại lý) và cần trả hàng. Khác với luồng Non-Stock (mục 1, TC-007 đến TC-011, hệ thống tự hủy Shipment gốc), ở luồng này <strong>Đại lý tự xuất kho trả hàng trên DMS</strong>: tạo Part Delivery Order (DO) từ SO Return, đi qua Picking, Packing, Good Issue, rồi tạo SO bán bù. Các bước đánh số tiếp theo quy trình (Bước 11 → 14); riêng Bước 12 được tách thành 12.1, 12.2, 12.3 theo đúng các màn hình thao tác trên DMS. Ảnh chụp từ môi trường <strong>Partial</strong> ngày 30/10/2026.</p>
 
   <div class="callout note">
     <span class="label">Từ 11/2026: DO trả hàng có Record Type riêng "DO Return Dropship"</span>
@@ -456,7 +535,7 @@
       </tr>
     </tbody>
   </table>
-  <p class="fn-meta" style="font-size:9.5pt;color:#555;">Cách đọc: Phần A là điều kiện đầu vào (Bước 1 → 7.2 và Đại lý nhập kho), đã được mô tả ở mục 1.1 → 1.4. Phần B là luồng DLR Stock. ERP tham gia ở Bước 8 (gửi SO Return), Bước 9 (Post Delivery, hook <code>8_PostPacking</code>) và Bước 13 (xuất kho, đồng bộ tồn kho); Bước 11 → 12.3 và Bước 14 do Đại lý thao tác trên DMS. Bước 13 không có thao tác của người dùng DMS, chỉ kiểm tra kết quả sau khi ERP đồng bộ.</p>
+  <p class="fn-meta" style="font-size:9.5pt;color:#555;">Cách đọc: Phần A là điều kiện đầu vào (Bước 1 → 7.2 và Đại lý nhập kho), đã được mô tả ở mục 1 (TC-001 đến TC-005). Phần B là luồng DLR Stock. ERP tham gia ở Bước 8 (gửi SO Return), Bước 9 (Post Delivery, hook <code>8_PostPacking</code>) và Bước 13 (xuất kho, đồng bộ tồn kho); Bước 11 → 12.3 và Bước 14 do Đại lý thao tác trên DMS. Bước 13 không có thao tác của người dùng DMS, chỉ kiểm tra kết quả sau khi ERP đồng bộ.</p>
 
   <div class="callout note">
     <span class="label">Cách đọc badge ở tiêu đề từng bước</span>
@@ -472,26 +551,26 @@
   </div>
 
   <h4>Điều kiện đầu vào: SO Return đã có trên DMS <span class="role erp">Chờ webhook ERP</span></h4>
-  <p>SO Return được ERP gửi về qua hook <code>SO_Return</code> (Bước 8.1, hướng dẫn ở mục 1.5, xem Hình 6 và Hình 7). Người dùng DMS không tạo SO Return bằng tay. Hook xử lý thành công thì SO Return xuất hiện ở trạng thái <strong>Open</strong>, Record Type <strong>SO Dropship Return</strong>, <strong>Sales Order Ref</strong> trỏ về SO gốc, số lượng âm. Chưa có SO Return thì không làm tiếp được các bước dưới.</p>
-  <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 14 – Hook SO_Return DH-00188565 (isRun, isSuccess được tích; Message "Success: Created Sales_Order__c …")</div><figcaption>Hình 14 – Điều kiện đầu vào: hook SO_Return xử lý thành công, tạo SO Return ARSO0004993.</figcaption></figure>
+  <p>SO Return được ERP gửi về qua hook <code>SO_Return</code> (TC-007 ở mục 1, xem Hình 11 và Hình 12). Người dùng DMS không tạo SO Return bằng tay. Hook xử lý thành công thì SO Return xuất hiện ở trạng thái <strong>Open</strong>, Record Type <strong>SO Dropship Return</strong>, <strong>Sales Order Ref</strong> trỏ về SO gốc, số lượng âm. Chưa có SO Return thì không làm tiếp được các bước dưới.</p>
+  <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 23 – Hook SO_Return DH-00188565 (isRun, isSuccess được tích; Message "Success: Created Sales_Order__c …")</div><figcaption>Hình 23 – Điều kiện đầu vào: hook SO_Return xử lý thành công, tạo SO Return ARSO0004993.</figcaption></figure>
 
   <!-- Bước 11 -->
   <h3 id="um-b11">2.2. Bước 11 – Kiểm tra tồn kho và tạo Part Delivery Order từ SO Return <span class="role">DLR · Thủ công</span></h3>
   <ol class="um-steps tagged">
     <li><span class="step-tag">Bước 11.a</span> Ghi nhận tồn kho trước khi xuất: vào <strong>App Launcher → Warehouse</strong> → kho <strong>DLR_INS</strong> → mục <strong>Warehouse Inventories</strong> → mở dòng sản phẩm <code>8200407188</code>. Tồn kho (QoH) hiện tại là <strong>10</strong>.
-      <figure class="shot"><img src="images/5994-stock/s01-ton-kho-truoc.png" alt="Tồn kho trước xuất"><figcaption>Hình 15 – Bước 11.a: Warehouse Inventory WHN-192701 (kho DLR_INS, sản phẩm 8200407188), QoH = 10.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s01-ton-kho-truoc.png" alt="Tồn kho trước xuất"><figcaption>Hình 24 – Bước 11.a: Warehouse Inventory WHN-192701 (kho DLR_INS, sản phẩm 8200407188), QoH = 10.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 11.b</span> Mở SO Return <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002cPdlYAE/view" target="_blank" rel="noopener">ARSO0004993</a>, nhấn button <strong>"Part Delivery Order"</strong> trên thanh thao tác. Cửa sổ <strong>Create Delivery Order</strong> hiện ra, ô <strong>Warehouse</strong> mặc định là <code>IAC</code> nên <strong>Available Physical Qty = 0</strong> và <strong>Delivery Qty = 0</strong>.
-      <figure class="shot"><img src="images/5994-stock/s02-wizard-part-do.png" alt="Wizard Create Delivery Order"><figcaption>Hình 16 – Bước 11.b: cửa sổ Create Delivery Order, Warehouse mặc định IAC.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s02-wizard-part-do.png" alt="Wizard Create Delivery Order"><figcaption>Hình 25 – Bước 11.b: cửa sổ Create Delivery Order, Warehouse mặc định IAC.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 11.c</span> Đổi <strong>Warehouse</strong> sang <strong>DLR_INS</strong>, bấm nút <strong>Save nhỏ</strong> cạnh ô Warehouse để nạp tồn kho của kho này. Dòng sản phẩm <code>8200407188</code> hiển thị <strong>Order Qty = 2</strong>, <strong>Available Physical Qty = 10</strong>, <strong>Delivery Qty = 2</strong>.
-      <figure class="shot"><img src="images/5994-stock/s03-wizard-dlr-ins.png" alt="Chọn kho DLR_INS"><figcaption>Hình 17 – Bước 11.c: sau khi chọn DLR_INS và bấm Save nhỏ, Available Physical Qty = 10, Delivery Qty = 2.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s03-wizard-dlr-ins.png" alt="Chọn kho DLR_INS"><figcaption>Hình 26 – Bước 11.c: sau khi chọn DLR_INS và bấm Save nhỏ, Available Physical Qty = 10, Delivery Qty = 2.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 11.d</span> Bấm <strong>Save</strong> ở cuối cửa sổ. Hệ thống tạo <strong>Delivery Order</strong> và quay lại SO Return; trạng thái SO Return chuyển sang <strong>Delivery</strong>.
-      <figure class="shot"><img src="images/5994-stock/s04-so-return-delivery.png" alt="SO Return chuyển Delivery"><figcaption>Hình 18 – Bước 11.d: SO Return ARSO0004993 ở trạng thái Delivery sau khi tạo DO.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s04-so-return-delivery.png" alt="SO Return chuyển Delivery"><figcaption>Hình 27 – Bước 11.d: SO Return ARSO0004993 ở trạng thái Delivery sau khi tạo DO.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 11.e</span> Mở <strong>DO</strong> vừa tạo (<a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Delivery_Order__c/a0eWC000004V6zjYAC/view" target="_blank" rel="noopener">DO-20261030-2158</a>): <strong>DO-20261030-2158</strong>, Record Type <strong>DO Return Dropship</strong> (DO tạo từ SO Return), trạng thái <strong>Draft</strong>, kho xuất DLR_INS, <strong>Receiving Warehouse</strong> = kho IVC của SO gốc; mục <strong>Delivery Order Item</strong> có sản phẩm <code>8200407188</code>, <strong>Delivery Qty = 2</strong>.
-      <figure class="shot"><img src="images/5994-stock/s05-do-draft.png" alt="DO Draft"><figcaption>Hình 19 – Bước 11.e: DO-20261030-2158 ở trạng thái Draft.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s05-do-draft.png" alt="DO Draft"><figcaption>Hình 28 – Bước 11.e: DO-20261030-2158 ở trạng thái Draft.</figcaption></figure>
     </li>
   </ol>
 
@@ -500,23 +579,23 @@
   <p>Tại DO, thanh trạng thái (Path) đi theo thứ tự <strong>Draft → Picking → Packing → Good Issue → In Transit → Invoiced</strong>. Phải làm đủ từng bước, <strong>không chọn nhảy thẳng sang Invoiced</strong> trên Path, vì bỏ qua Picking và Packing thì sẽ không có Goods Issue và không có số lượng đã lấy.</p>
   <ol class="um-steps tagged">
     <li><span class="step-tag">Bước 12.1.a</span> Ở DO, nhấn <strong>Mark Status as Complete</strong> để chuyển <strong>Draft → Picking</strong>. Trên DO xuất hiện button <strong>New Picking List</strong>.
-      <figure class="shot"><img src="images/5994-stock/s06-do-picking.png" alt="DO ở bước Picking"><figcaption>Hình 20 – Bước 12.1.a: DO ở bước Picking, có button New Picking List.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s06-do-picking.png" alt="DO ở bước Picking"><figcaption>Hình 29 – Bước 12.1.a: DO ở bước Picking, có button New Picking List.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 12.1.b</span> Nhấn <strong>New Picking List</strong>. Tích chọn dòng sản phẩm <code>8200407188</code> (Qty 2, vị trí kho INS) rồi nhấn <strong>Next</strong>.
-      <figure class="shot"><img src="images/5994-stock/s07-picking-chon-dong.png" alt="Chọn dòng picking"><figcaption>Hình 21 – Bước 12.1.b: chọn dòng sản phẩm cần lấy.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s07-picking-chon-dong.png" alt="Chọn dòng picking"><figcaption>Hình 30 – Bước 12.1.b: chọn dòng sản phẩm cần lấy.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 12.1.c</span> Chọn <strong>Device</strong> (bắt buộc; là số thứ tự bàn/thiết bị lấy hàng, ví dụ <code>1</code>), có thể nhập <strong>Creator's Name</strong>, rồi nhấn <strong>Save</strong>. Hệ thống tạo Picking List <strong>PICK-0350</strong> ở trạng thái <strong>Open</strong>.
-      <figure class="shot"><img src="images/5994-stock/s08-picking-device.png" alt="Chọn device picking"><figcaption>Hình 22 – Bước 12.1.c: chọn Device rồi Save để tạo Picking List.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s08-picking-device.png" alt="Chọn device picking"><figcaption>Hình 31 – Bước 12.1.c: chọn Device rồi Save để tạo Picking List.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 12.1.d</span> Mở Picking List, nhấn <strong>Picking PC</strong>. Cột <strong>Picked Qty</strong> mặc định bằng số cần lấy (2), từ vị trí INS. Nhấn <strong>Save</strong> → <strong>Xác nhận</strong>. Sau đó <strong>Total Picking Quantity = 2</strong> (đồng thời DO Item có Picked Quantity = 2).
-      <figure class="shot"><img src="images/5994-stock/s09-picking-pc.png" alt="Picking PC"><figcaption>Hình 23 – Bước 12.1.d: màn hình Picking PC, Picked Qty = 2.</figcaption></figure>
-      <figure class="shot"><img src="images/5994-stock/s10-picking-da-luu.png" alt="Picking đã lưu"><figcaption>Hình 24 – Bước 12.1.d: PICK-0350 có Total Picking Quantity = 2, trạng thái vẫn Open.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s09-picking-pc.png" alt="Picking PC"><figcaption>Hình 32 – Bước 12.1.d: màn hình Picking PC, Picked Qty = 2.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s10-picking-da-luu.png" alt="Picking đã lưu"><figcaption>Hình 33 – Bước 12.1.d: PICK-0350 có Total Picking Quantity = 2, trạng thái vẫn Open.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 12.1.e</span> Nhấn <strong>Complete Picking</strong> → <strong>Save</strong>. Picking List chuyển <strong>Complete</strong>.
-      <figure class="shot"><img src="images/5994-stock/s11-picking-complete.png" alt="Picking Complete"><figcaption>Hình 25 – Bước 12.1.e: PICK-0350 đã Complete.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s11-picking-complete.png" alt="Picking Complete"><figcaption>Hình 34 – Bước 12.1.e: PICK-0350 đã Complete.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 12.1.f</span> Quay lại DO, nhấn <strong>Mark Status as Complete</strong> để chuyển <strong>Picking → Packing</strong>. Button <strong>Create Packing List</strong> xuất hiện.
-      <figure class="shot"><img src="images/5994-stock/s12-do-packing.png" alt="DO ở bước Packing"><figcaption>Hình 26 – Bước 12.1.f: DO ở bước Packing, có button Create Packing List.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s12-do-packing.png" alt="DO ở bước Packing"><figcaption>Hình 35 – Bước 12.1.f: DO ở bước Packing, có button Create Packing List.</figcaption></figure>
     </li>
   </ol>
   <div class="callout warn">
@@ -528,21 +607,21 @@
   <h3 id="um-b122">2.4. Bước 12.2 – Packing (đóng gói) <span class="role">DLR · Thủ công</span></h3>
   <ol class="um-steps tagged">
     <li><span class="step-tag">Bước 12.2.a</span> Ở DO (bước Packing), nhấn <strong>Create Packing List</strong>, chọn <strong>Device</strong> (ví dụ <code>1</code>) rồi <strong>Save</strong>. Hệ thống tạo Packing List <strong>PACK-00256</strong> ở trạng thái <strong>Open</strong>.
-      <figure class="shot"><img src="images/5994-stock/s13-packing-device.png" alt="Tạo Packing List"><figcaption>Hình 27 – Bước 12.2.a: chọn Device để tạo Packing List.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s13-packing-device.png" alt="Tạo Packing List"><figcaption>Hình 36 – Bước 12.2.a: chọn Device để tạo Packing List.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 12.2.b</span> Ở Packing List nhấn <strong>Create Case Number</strong> (thùng hàng): chọn <strong>Auto Generate</strong>, <strong>Số Lượng Cần Tạo = 1</strong>, nhập <strong>Packing User</strong>, <strong>Save</strong>. <strong>Total Cases = 1</strong> và hệ thống sinh mã thùng, ví dụ <code>DLR_INS-20261030-00033</code>.
-      <figure class="shot"><img src="images/5994-stock/s14-case-created.png" alt="Đã tạo Case Number"><figcaption>Hình 28 – Bước 12.2.b: Packing List có Total Cases = 1, Packing User đã nhập.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s14-case-created.png" alt="Đã tạo Case Number"><figcaption>Hình 37 – Bước 12.2.b: Packing List có Total Cases = 1, Packing User đã nhập.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 12.2.c</span> Nhấn <strong>Scan</strong>. Nhập mã thùng vào <strong>Case No.</strong> rồi <strong>Enter</strong> (thông báo "Đã nhận Case mới"), sau đó nhập <code>8200407188</code> vào <strong>Part No.</strong> rồi <strong>Enter</strong>. Dòng sản phẩm hiện ra với <strong>Packed Quantity</strong> mặc định 1; sửa thành <strong>2</strong>.
-      <figure class="shot"><img src="images/5994-stock/s15-scan-case-part.png" alt="Quét thùng và Part"><figcaption>Hình 29 – Bước 12.2.c: thùng DLR_INS-20261030-00033 đã nhận, dòng 8200407188 chờ nhập Packed Quantity.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s15-scan-case-part.png" alt="Quét thùng và Part"><figcaption>Hình 38 – Bước 12.2.c: thùng DLR_INS-20261030-00033 đã nhận, dòng 8200407188 chờ nhập Packed Quantity.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 12.2.d</span> Nhấn <strong>Save</strong>. Thông báo <em>"Thành công – Đã lưu Packing List Items"</em>, <strong>Packed Quantity = 2</strong>.
-      <figure class="shot"><img src="images/5994-stock/s16-scan-da-luu.png" alt="Đã lưu Packing List Items"><figcaption>Hình 30 – Bước 12.2.d: đã lưu Packing List Items, Packed Quantity = 2.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s16-scan-da-luu.png" alt="Đã lưu Packing List Items"><figcaption>Hình 39 – Bước 12.2.d: đã lưu Packing List Items, Packed Quantity = 2.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 12.2.e</span> Ở Packing List mở menu <strong>▼</strong> cạnh các button, chọn <strong>Complete Packing</strong>, xác nhận <strong>Save</strong>. Packing List chuyển <strong>Complete</strong> (Total Packed Quantity = 2).
-      <figure class="shot"><img src="images/5994-stock/s17-complete-packing-menu.png" alt="Menu Complete Packing"><figcaption>Hình 31 – Bước 12.2.e: chọn Complete Packing trong menu.</figcaption></figure>
-      <figure class="shot"><img src="images/5994-stock/s18-complete-packing-confirm.png" alt="Xác nhận hoàn thành đóng gói"><figcaption>Hình 32 – Bước 12.2.e: xác nhận hoàn thành đóng gói.</figcaption></figure>
-      <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 33 – Packing List PACK-00256 ở trạng thái Complete</div><figcaption>Hình 33 – Bước 12.2.e: PACK-00256 đã Complete.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s17-complete-packing-menu.png" alt="Menu Complete Packing"><figcaption>Hình 40 – Bước 12.2.e: chọn Complete Packing trong menu.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s18-complete-packing-confirm.png" alt="Xác nhận hoàn thành đóng gói"><figcaption>Hình 41 – Bước 12.2.e: xác nhận hoàn thành đóng gói.</figcaption></figure>
+      <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 42 – Packing List PACK-00256 ở trạng thái Complete</div><figcaption>Hình 42 – Bước 12.2.e: PACK-00256 đã Complete.</figcaption></figure>
     </li>
   </ol>
   <div class="callout warn">
@@ -554,14 +633,14 @@
   <h3 id="um-b123">2.5. Bước 12.3 – Good Issue và SO Return tự Completed <span class="role">DLR · Thủ công</span> <span class="role">Tự động</span></h3>
   <ol class="um-steps tagged">
     <li><span class="step-tag">Bước 12.3.a</span> Quay lại DO, nhấn <strong>Mark Status as Complete</strong> để chuyển <strong>Packing → Good Issue</strong>. Trên DO xuất hiện button <strong>Create Goods Issue</strong>. <span class="role">Tự động</span> Khi DO đạt <strong>Good Issue</strong>, hệ thống tự chuyển <strong>SO Return</strong> sang <strong>Completed</strong> (trigger <code>completeSORDropshipReturnWhenDODelivered</code>; cũng áp dụng khi DO đạt Invoiced hoặc Delivered).
-      <figure class="shot"><img src="images/5994-stock/s19-do-good-issue.png" alt="DO ở bước Good Issue"><figcaption>Hình 34 – Bước 12.3.a: DO ở bước Good Issue, có button Create Goods Issue.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s19-do-good-issue.png" alt="DO ở bước Good Issue"><figcaption>Hình 43 – Bước 12.3.a: DO ở bước Good Issue, có button Create Goods Issue.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 12.3.b</span> Nhấn <strong>Create Goods Issue</strong> → xác nhận <strong>Save</strong>. Hệ thống tạo phiếu xuất kho <strong>Parts Issue Note GIP-20261030-00001</strong> ở trạng thái <strong>Completed</strong>, tổng số lượng 2.
-      <figure class="shot"><img src="images/5994-stock/s20-create-goods-issue.png" alt="Xác nhận tạo Goods Issue"><figcaption>Hình 35 – Bước 12.3.b: xác nhận tạo Goods Issue.</figcaption></figure>
-      <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 36 – Parts Issue Note GIP-20261030-00001, Status = Completed, qty = 2</div><figcaption>Hình 36 – Bước 12.3.b: phiếu Goods Issue GIP-20261030-00001 đã Completed.</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s20-create-goods-issue.png" alt="Xác nhận tạo Goods Issue"><figcaption>Hình 44 – Bước 12.3.b: xác nhận tạo Goods Issue.</figcaption></figure>
+      <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 45 – Parts Issue Note GIP-20261030-00001, Status = Completed, qty = 2</div><figcaption>Hình 45 – Bước 12.3.b: phiếu Goods Issue GIP-20261030-00001 đã Completed.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 12.3.c</span> Mở lại SO Return <a href="https://ivcl--partial.sandbox.lightning.force.com/lightning/r/Sales_Order__c/a1eWC000002cPdlYAE/view" target="_blank" rel="noopener">ARSO0004993</a>: thanh trạng thái đã <strong>Completed</strong> (button <strong>Mark Status as Complete</strong> chuyển xám). Menu <strong>▼</strong> có action <strong>Create Offset SO</strong> (dùng ở Bước 14).
-      <figure class="shot"><img src="images/5994-stock/s21-so-return-completed.png" alt="SO Return Completed"><figcaption>Hình 37 – Bước 12.3.c: SO Return Completed, menu hiển thị Create SO bán bù (nay đổi tên thành Create Offset SO).</figcaption></figure>
+      <figure class="shot"><img src="images/5994-stock/s21-so-return-completed.png" alt="SO Return Completed"><figcaption>Hình 46 – Bước 12.3.c: SO Return Completed, menu hiển thị Create SO bán bù.</figcaption></figure>
     </li>
   </ol>
 
@@ -575,7 +654,7 @@
     <li><span class="step-tag">Bước 13.a</span> <span class="role sync">Chờ data sync</span> Tồn kho DMS đã giảm ngay khi Goods Issue Completed (xem callout trên). Phần còn lại là chờ ERP ghi nhận xuất kho và đẩy tồn kho về DMS để đối chiếu.</li>
     <li><span class="step-tag">Bước 13.b</span> Kiểm tra hook tồn kho: mở <strong>D365FO_Hook</strong> mới nhất có <strong>Function = InventSum</strong> của item <code>8200407188</code>, kho <code>DLR_INS</code> (trong Input: <code>InventLocationId</code> = DLR_INS, <code>ItemId</code> = 8200407188, <code>AvailPhysical</code> = 8). <strong>isRun</strong> và <strong>isSuccess</strong> được tích, <strong>Message</strong> ghi <em>"D365FO InventSum temp Created/Updated Successfully"</em>. Hook InventSum của item/kho khác (ví dụ DLR_ITB) <strong>không phải</strong> kết quả của DO này.</li>
     <li><span class="step-tag">Bước 13.c</span> Vào lại <strong>Warehouse → DLR_INS → Warehouse Inventories</strong>, mở sản phẩm <code>8200407188</code>: tồn kho (QoH) giảm từ <strong>10</strong> xuống <strong>8</strong> (đúng 2 cái xuất trả).
-      <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 38 – Tồn kho DLR_INS sau khi ERP đồng bộ (kỳ vọng QoH = 8). Hiện tại, chưa đồng bộ, vẫn QoH = 10.</div><figcaption>Hình 38 – Bước 13.c: tồn kho kho DLR_INS sau khi data sync về.</figcaption></figure>
+      <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 47 – Tồn kho DLR_INS sau khi ERP đồng bộ (kỳ vọng QoH = 8). Hiện tại, chưa đồng bộ, vẫn QoH = 10.</div><figcaption>Hình 47 – Bước 13.c: tồn kho kho DLR_INS sau khi data sync về.</figcaption></figure>
     </li>
   </ol>
   <div class="callout warn">
@@ -594,11 +673,11 @@
         <li>Khung thông tin: SO Return, <strong>SO gốc</strong>, <strong>Warehouse</strong> và <strong>ERP Default Dimension</strong> của SO gốc.</li>
         <li>Bảng sản phẩm: mã SP, SL Return (số dương), <strong>SL bán bù</strong> (mặc định bằng SL Return, tối đa SL Return), <strong>Đơn giá (SO gốc)</strong>.</li>
       </ul>
-      <figure class="shot"><img src="images/5994-offset/o01-form-create-offset-so.png" alt="Cửa sổ Create Offset SO"><figcaption>Hình 39 – Bước 14.a: cửa sổ Create Offset SO (SO Return ARSO0004996, Shipment gốc SM-000399, đơn giá lấy theo SO gốc).</figcaption></figure>
+      <figure class="shot"><img src="images/5994-offset/o01-form-create-offset-so.png" alt="Cửa sổ Create Offset SO"><figcaption>Hình 48 – Bước 14.a: cửa sổ Create Offset SO (SO Return ARSO0004996, Shipment gốc SM-000399, đơn giá lấy theo SO gốc).</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 14.b</span> Chọn sản phẩm cần bán bù, chỉnh <strong>SL bán bù</strong> nếu cần, nhấn <strong>Create Offset SO</strong>. Hệ thống tạo Sales Order mới và chuyển sang trang SO đó.</li>
     <li><span class="step-tag">Bước 14.c</span> Kiểm tra SO mới (ví dụ <strong>ARSO0005008</strong>): Record Type <strong>DLR Part Sales Order</strong>, trạng thái <strong>Draft</strong> (chưa có trên ERP); <strong>Warehouse</strong> và <strong>ERP Default Dimension</strong> giống SO gốc; Đại lý, Purchase Order lấy theo SO gốc; <strong>Sales Order Ref</strong> trỏ về SO Return; <strong>Original Shipment</strong> trỏ về Shipment gốc; dòng item có <strong>số lượng dương</strong>, <strong>đơn giá, thuế (VAT), thành tiền giống dòng SO gốc</strong> (thành tiền quy đổi theo SL bán bù; Discount Amount tính trên mỗi đơn vị nên giữ nguyên, không quy đổi).
-      <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 40 – SO bán bù ARSO0005008 (Draft, Warehouse DLR_ITB, Original Shipment SM-000399, đơn giá 6.939.000)</div><figcaption>Hình 40 – Bước 14.c: Offset SO ARSO0005008 vừa tạo.</figcaption></figure>
+      <figure class="shot pending"><div class="ph">Ảnh bổ sung sau: Hình 49 – SO bán bù ARSO0005008 (Draft, Warehouse DLR_ITB, Original Shipment SM-000399, đơn giá 6.939.000)</div><figcaption>Hình 49 – Bước 14.c: Offset SO ARSO0005008 vừa tạo.</figcaption></figure>
     </li>
     <li><span class="step-tag">Bước 14.d</span> Kiểm tra xong, bấm <strong>Open</strong> trên SO bán bù: lúc này SO mới được tạo ở ERP (hook <code>CreateSO</code>). Từ đó xử lý SO như SO thông thường.</li>
   </ol>
@@ -621,29 +700,27 @@
   </div>
 
   <!-- Kết quả DLR Stock -->
-  <h3 id="um-stock-result">2.9. Kết quả test luồng DLR Stock (Partial, 30/10/2026; bổ sung 02/11/2026)</h3>
+  <h3 id="um-stock-result">2.9. Kết quả test luồng DLR Stock (Partial)</h3>
   <table class="grid">
     <thead><tr><th class="c" style="width:12%">Bước</th><th style="width:34%">Kiểm tra</th><th class="c" style="width:16%">Kết quả</th><th>Ghi chú</th></tr></thead>
     <tbody>
       <tr><td class="c">Đầu vào</td><td>SO Return được ERP gửi qua hook <code>SO_Return</code></td><td class="c">Đạt (hook chèn thủ công)</td><td>DH-00188565: ARSO0004993, Open. <span class="role erp">Chờ webhook ERP</span> khi chạy thật.</td></tr>
       <tr><td class="c">11.a</td><td>Tồn kho DLR_INS trước xuất</td><td class="c">Đạt</td><td>QoH = 10</td></tr>
-      <tr><td class="c">11.b–11.e</td><td>Tạo Part DO từ SO Return</td><td class="c">Đạt</td><td>DO-20261030-2158, Draft, kho DLR_INS, SL 2; SO Return sang Delivery (test ngày 30/10, lúc đó DO còn là Dealer Parts DO; từ 11/2026 là DO Return Dropship)</td></tr>
+      <tr><td class="c">11.b–11.e</td><td>Tạo DO từ SO Return</td><td class="c">Đạt</td><td>DO-20261030-2158, Draft, kho DLR_INS, SL 2; SO Return sang Delivery</td></tr>
+      <tr><td class="c">11, 8</td><td>Return DO có RT DO Return Dropship, kho xuất / kho nhận đúng</td><td class="c">Đạt</td><td>DO-20261030-2159: Issuing = SF_ITB, Receiving = DLR_ITB (chạy lại hook <code>8_PostPacking</code>)</td></tr>
+      <tr><td class="c">11</td><td>DO Return Dropship không sync ERP, không tạo Shipment nhập kho</td><td class="c">Đạt</td><td>Test tự động xác nhận không sinh hook CreateDOPart</td></tr>
       <tr><td class="c">12.1</td><td>Picking</td><td class="c">Đạt</td><td>PICK-0350 Complete, Picked Qty = 2</td></tr>
       <tr><td class="c">12.2</td><td>Packing</td><td class="c">Đạt</td><td>PACK-00256 Complete, 1 thùng, Packed Qty = 2</td></tr>
       <tr><td class="c">12.3</td><td>Good Issue, SO Return tự Completed</td><td class="c">Đạt</td><td>DO Good Issue; GIP-20261030-00001 Completed (qty 2); ARSO0004993 Completed</td></tr>
-      <tr><td class="c">13</td><td>Tồn kho DLR_INS giảm 10 → 8</td><td class="c"><span class="role sync">Chờ data sync</span></td><td>Test 30/10 với Dealer Parts DO: DMS không trừ, QoH vẫn 10. Từ 11/2026 DO Return Dropship được DMS trừ khi Goods Issue Completed; ERP chưa gửi InventSum cho item này.</td></tr>
-      <tr><td class="c">14</td><td>Tạo SO bán bù</td><td class="c">Đạt</td><td>ARSO0004995: DLR Part Sales Order, Open, Sales Order Ref = ARSO0004993, item 8200407188 SL +2 (test 30/10, bản cũ)</td></tr>
-      <tr><td class="c" colspan="4"><strong>Bổ sung 02/11/2026 (Partial và QA)</strong></td></tr>
-      <tr><td class="c">11, 8</td><td>Return DO có RT DO Return Dropship, kho xuất / kho nhận đúng</td><td class="c">Đạt</td><td>DO-20261030-2159: RT DO Return Dropship, Issuing = SF_ITB, Receiving = DLR_ITB (chạy lại hook <code>8_PostPacking</code>)</td></tr>
-      <tr><td class="c">11</td><td>DO Return Dropship không sync ERP, không tạo Shipment nhập kho</td><td class="c">Đạt</td><td>Test tự động xác nhận không sinh hook CreateDOPart</td></tr>
       <tr><td class="c">Auto</td><td>Auto-complete DO cho DO Return Dropship (Draft và Good Issue)</td><td class="c">Đạt</td><td>PICK-0357 Complete, GIP-20261030-00006 Completed (100); không có Packing List; test tự động xác nhận tồn location giảm</td></tr>
+      <tr><td class="c">13</td><td>Tồn kho DLR_INS giảm 10 → 8</td><td class="c"><span class="role sync">Chờ data sync</span></td><td>DMS trừ tồn kho khi Goods Issue Completed của DO Return Dropship; ERP chưa gửi InventSum cho item này nên chưa xác nhận được QoH giảm.</td></tr>
       <tr><td class="c">14</td><td>Create Offset SO</td><td class="c">Đạt</td><td>ARSO0005008: Draft, Warehouse DLR_ITB, ERP Default Dimension SPP-AFS---SPP--02, Original Shipment SM-000399, đơn giá 6.939.000, VAT08, thành tiền 693.900.000 giống SO gốc</td></tr>
-      <tr><td class="c">10.e</td><td>ERP gửi lặp Sync_InvoiceSO khi SO đã Completed</td><td class="c">Đạt</td><td>Test tự động: SO không đổi nhưng vẫn gắn Shipment gốc đã nhập kho</td></tr>
+      <tr><td class="c">10.e</td><td>ERP gửi lặp Sync_InvoiceSO khi SO đã Completed</td><td class="c">Đạt</td><td>Hook gửi lặp báo Skipped, SO không đổi (hook DH-00198521)</td></tr>
     </tbody>
   </table>
 
   <footer class="doc-foot">
-    Ticket 5994 · Return đơn Dropship Part (chưa nhập kho DLR &amp; DLR Stock) · Phiên bản 2026-11-02
+    Ticket 5994 · Return đơn Dropship Part (chưa nhập kho DLR &amp; DLR Stock) · Phiên bản 2026-11-11
   </footer>
 
 </main>

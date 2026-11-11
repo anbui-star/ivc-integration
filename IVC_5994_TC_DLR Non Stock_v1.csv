@@ -1,0 +1,58 @@
+﻿Test Case ID,Kịch bản (Scenario),Trường hợp kiểm thử (Test Case),Đường dẫn,Dữ liệu đầu vào,Cách thức thực hiện,Kết quả mong đợi,Kết quả by O1,Mô tả kết quả thực tế,"Ghi chú
+(OMN1)",Testing date,IVC Test by,Kết quả by IVC,Rejected Reason by IVC,Hình ảnh/ Link,"Ghi chú
+(IVC)",,,
+TC-001-01,Tạo PO,DLRs tự tạo PO trên DMS (chỉ 1 vendor),Home => App Launcher => DLR => Purchase Orders,,"1. Tạo PO với Record Type = DLR Purchase Order.
+2. Chọn Priority = Normal, PO Type = Dropship.
+3. Thêm các sản phẩm thuộc cùng một vendor.
+4. Chọn Submit for Approval và thực hiện Approve.","PO được tạo thành công, chứa sản phẩm của một vendor và chuyển sang trạng thái đã phê duyệt.",Passed,Tạo thành công một PO Dropship cho một vendor và hoàn tất phê duyệt.,,11/4/2026,Như,Accepted,,,,,,
+TC-001-02,Tạo PO,DLRs tự tạo PO trên DMS lớn hơn 1 vendor (2 vendor),Home => App Launcher => DLR => Purchase Orders,,"1. Tạo PO với Record Type = DLR Purchase Order.
+2. Chọn Priority = Normal, PO Type = Dropship.
+3. Thêm sản phẩm thuộc hai vendor khác nhau.
+4. Chọn Submit for Approval và thực hiện Approve.",PO được tạo thành công và ghi nhận sản phẩm thuộc hai vendor. PO được chuyển sang trạng thái đã phê duyệt.,Passed,Tạo thành công PO Dropship có sản phẩm của hai vendor và hoàn tất phê duyệt.,,11/4/2026,Như,Accepted,,,,,,
+TC-002-01,Tạo SO,Hệ thống tạo SO trên DMS chỉ 1 vendor,Home => App Launcher => AFS => Sales Order,PO 1 vendor đã Approved.,"1. Mở PO một vendor đã được phê duyệt.
+2. Kiểm tra Sales Order được tạo trên DMS.
+4. Kiểm tra thông tin liên kết với PO, vendor và sản phẩm.
+5. Gắn hoặc kiểm tra ERP Default Dimension.
+6. Chuyển SO sang trạng thái Open.",SO 1 Vendor,Passed,Hệ thống tạo SO tương ứng cho PO 1 vendor và SO được chuyển sang Open,,11/4/2026,Như,Accepted,,,,,,
+TC-002-02,Tạo SO,Hệ thống tạo SO trên DMS lớn hơn 1 vendor (2 vendor),Home => App Launcher => AFS => Sales Order,PO 2 vendor đã Approved.,"1. Mở PO có hai vendor đã được phê duyệt.
+2. Kiểm tra các SO được hệ thống tạo trên DMS.
+3. Đối chiếu vendor và sản phẩm của từng SO với PO.
+4. Gắn hoặc kiểm tra ERP Default Dimension.
+5. Chuyển các SO sang trạng thái Open.",SO 2 Vendor,Passed,Hệ thống tạo SO tương ứng cho PO hai vendor và SO được chuyển sang Open,,11/4/2026,Như,Accepted,,,,,,
+TC-003-01,Tạo SO,Tự động tạo SO dropship lên ERP (1 vendor),ERP,SO Dropship 1 vendor đã Open.,,,Passed,,,11/4/2026,Như,Accepted,,,,,,
+TC-003-02,Tạo SO,Tự động tạo SO dropship lên ERP (2 vendor),ERP,SO Dropship 2 vendor đã Open.,,,Passed,,,11/4/2026,Như,Accepted,,,,,,
+TC-004,Post invoice Journal SO,Post thủ công 1 SO trên ERP,ERP,SO Dropship đã đồng bộ lên ERP.,,,Passed,,,11/4/2026,Như,Accepted,,,,,,
+TC-005,Tao SM,Tự động tạo SM khi hoàn tất thực hiện post invoice Journal SO trên ERP,DMS => App Launcher => DLR => Shipments,SO đã Post Invoice trên ERP.,"1. Hoàn tất Post Invoice Journal của SO Dropship trên ERP.
+2. Chờ hook hoặc tiến trình đồng bộ về DMS.
+3. Mở SO trên DMS.
+4. Kiểm tra danh sách Shipment liên quan.","Shipment liên kết đúng SO, invoice và chứa đúng sản phẩm, số lượng.",Passed,Tự động tạo Shipment liên kết với SO,,11/4/2026,Như,Accepted,,,,,,
+TC-006,Tạo SO Return trên ERP,ERP thực hiện tạo manual 1 SO Return,ERP,SO gốc đã hoàn thành trên ERP.,,,,,,11/9/2026,Như,Accepted,"SO gốc: ARSO0034782
+SO return: ARSO0034785",,,,,
+TC-007,Tạo SO Return trên DMS,Tự động động bộ SO return từ ERP xuống DMS và sinh ra 1 SO return tương ứng,DMS => App Launcher => AFS => Sales Orders,SO Return đã được tạo trên ERP.,"1. Tạo SO Return trên ERP.
+2. Chờ tiến trình đồng bộ từ ERP về DMS.
+3. Trên DMS, tìm SO Return theo mã ERP.","SO Return được tạo thành công trên ERP, tham chiếu đúng giao dịch gốc và sẵn sàng đồng bộ về DMS.",Passed,DMS tạo ra SO Return được tham chiếu với SO Return trên ERP,,11/9/2026,Như,Accepted,Không xem được SO return sync xuống DMS - Hiếu IT đã cấp quyền,,,,,
+TC-008,"Post Delivery, tạo Packing Slip Journal và Post Invoice Journal","Thực hiện post thủ công trên ERP Post Delivery, tạo Packing Slip Journal và Post Invoice Journal",ERP,SO Return đã đồng bộ về DMS và có GR.,,,Passed,,,11/9/2026,Như,Rejected,"Đã post packing slip trên SO ERP, tuy nhiên DMS tự tạo DO chứ ko cancel SM--> cái này chỉ sinh DO khi SM gốc complete, trường hợp này SM gốc chưa có complete > nên nó cancelled SM gốc chứ ko có tạo DO","- DO retrun sinh ra từ SO return không có DO items? DO phải ở trạng thái Draft khi post packing slip từ ERP chứ không phải ở trạng thái Good Issue.
+- Cân nhắc xem có nên chuyển từ DO return sang shipment return không? Vì SO return là từ IVC -> DLR nhưng lại cần DLR vào complete DO từ SO này?",,,,
+TC-009,Tạo DO,DMS tự động sinh DO khi Post Packing Slips trên ERP,DMS => App Launcher => AFS => Sales Order,,"1. Vào SO Return 
+2. Vào Delivery Order
+3. Kiểm tra xem DO vừa được tạo phải ở trạng thái ‘Draft’
+4. Kiểm tra trong DO đã có DO items chưa
+",DO được tạo ở trạng thái Draft và có gắn items,,,,,,,,,,,,
+TC-010,Cancel SM và DO,Tự động cancel SM gốc & DO ở TC-009 khi SO return nhận đc tín hiệu post invoice của đơn return từ ERP,DMS => App Launcher => DLR => Shipments,Tự động cancel SM gốc khi SO return nhận đc tín hiệu post deliver từ ERP,"1. Đảm bảo SO Return đã đồng bộ về DMS và giao dịch gốc có SM
+2. Mở SO Return trên DMS.
+3. Kiểm tra shipment đã chuyển sang trạng thái Cancel không?
+4. Kiểm tra DO ở SO return đã chuyển sang cancelled chưa?",Khi post return invoice thì DMS chỉ cancel đúng 1 SM theo invoice và cancel DO,Pending,,,11/10/2026,Như,Rejected,Lỗi: gán 1 invoice vào toàn bộ SM đang có trong SO --> khi post return invoice thÌ DMS cancel toàn bộ SM,Picture,,,,
+TC-011,Completed SO Return,Tự động completed SO return trên DMS khi Post Invoice Journal trên ERP,DMS => App Launcher => AFS => Sales Orders,,"1. Hoàn tất Post Invoice Journal của SO Return trên ERP.
+2.Kiểm tra trạng thái SO Return đã Complete chưa
+",SO Return trên DMS được chuyển sang Complete,Passed,SO Return chuyển về trạng thái Complete,,,,,,,,,,
+TC-012,Tạo SO bán bù,Tạo SO bán bù từ item của DLR SO Return đã Complete,DMS => App Launcher => AFS => SO Return,"DLR SO Return đã Complete, gồm một hoặc nhiều item hợp lệ để bán bù.","1. Mở DLR SO Return đã Complete, chọn ""Create Offset SO""
+2. Chọn SO Return đã Complete
+3. Chọn mã sản phẩm và SL bán bù
+4. Chọn ‘Create Offset SO’
+5. Kiểm tra các thông tin trên đơn SO vừa tạo
+6. Chuyển SO sang trạng thái Open
+7. Thực hiện như đơn SO bình thường
+
+",Hệ thống tạo thành công một SO bán bù và liên kết với DLR SO Return nguồn. SO tự động gán Pricebook để chuyển SO sang trạng thái open thành công,,,,11/10/2026,Như,Rejected,"- SO chưa tự động gán Pricebook
+- Mở quyền cho account của SPP để edit thêm line trên SO item ",Picture,,,,
+,,,,,,,,,,,,,,,,,,
